@@ -1,0 +1,867 @@
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  FileText,
+  Plus,
+  Save,
+  Download,
+  Eye,
+  Shuffle,
+  Lock,
+  Brain,
+  BookOpen,
+  Settings2,
+  CheckCircle2,
+  Trash2,
+  Copy,
+  FileDown,
+} from "lucide-react";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+
+interface Question {
+  id: number;
+  text: string;
+  type: string;
+  marks: number;
+  unit: string;
+  difficulty: string;
+  bloomLevel: string;
+}
+
+const StaffQuestionPaper = () => {
+  const { toast } = useToast();
+  const [step, setStep] = useState(1);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  
+  // Basic Details
+  const [examName, setExamName] = useState("");
+  const [academicYear, setAcademicYear] = useState("");
+  const [semester, setSemester] = useState("");
+  const [department, setDepartment] = useState("");
+  const [courseName, setCourseName] = useState("");
+  const [subjectCode, setSubjectCode] = useState("");
+  const [examDate, setExamDate] = useState("");
+  const [duration, setDuration] = useState("");
+  const [maxMarks, setMaxMarks] = useState("");
+
+  // Question Paper Pattern
+  const [partA, setPartA] = useState({ questions: 10, marks: 2, total: 20 });
+  const [partB, setPartB] = useState({ questions: 5, marks: 8, total: 40 });
+  const [partC, setPartC] = useState({ questions: 2, marks: 20, total: 40 });
+
+  // Syllabus & Difficulty
+  const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
+  const [difficultyMix, setDifficultyMix] = useState({ easy: 30, medium: 50, hard: 20 });
+
+  // Bloom's Taxonomy
+  const [bloomDistribution, setBloomDistribution] = useState({
+    remember: 20,
+    understand: 20,
+    apply: 25,
+    analyze: 15,
+    evaluate: 10,
+    create: 10,
+  });
+
+  // Security Options
+  const [shuffleQuestions, setShuffleQuestions] = useState(false);
+  const [shuffleOptions, setShuffleOptions] = useState(false);
+  const [multipleVersions, setMultipleVersions] = useState(false);
+  const [versionsCount, setVersionsCount] = useState("2");
+  const [watermark, setWatermark] = useState(true);
+  const [encryptPdf, setEncryptPdf] = useState(false);
+
+  // Output Format
+  const [outputFormat, setOutputFormat] = useState("pdf");
+  const [includeAnswerKey, setIncludeAnswerKey] = useState(true);
+  const [includeMarkingScheme, setIncludeMarkingScheme] = useState(true);
+
+  const units = [
+    "Unit 1: Introduction to Data Structures",
+    "Unit 2: Arrays and Linked Lists",
+    "Unit 3: Stacks and Queues",
+    "Unit 4: Trees and Graphs",
+    "Unit 5: Sorting and Searching",
+  ];
+
+  const addQuestion = () => {
+    const newQuestion: Question = {
+      id: questions.length + 1,
+      text: "",
+      type: "descriptive",
+      marks: 2,
+      unit: "Unit 1",
+      difficulty: "medium",
+      bloomLevel: "understand",
+    };
+    setQuestions([...questions, newQuestion]);
+  };
+
+  const updateQuestion = (id: number, field: keyof Question, value: string | number) => {
+    setQuestions(questions.map(q => 
+      q.id === id ? { ...q, [field]: value } : q
+    ));
+  };
+
+  const removeQuestion = (id: number) => {
+    setQuestions(questions.filter(q => q.id !== id));
+  };
+
+  const generatePaper = () => {
+    toast({
+      title: "Question Paper Generated",
+      description: "Your question paper has been generated successfully.",
+    });
+  };
+
+  const saveDraft = () => {
+    toast({
+      title: "Draft Saved",
+      description: "Question paper draft has been saved.",
+    });
+  };
+
+  return (
+    <DashboardLayout role="staff" title="Generate Question Paper">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-heading font-bold text-foreground">Generate Question Paper</h2>
+          <p className="text-muted-foreground">Create comprehensive question papers with advanced options</p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={saveDraft}>
+            <Save className="w-4 h-4 mr-2" />
+            Save Draft
+          </Button>
+          <Button onClick={generatePaper}>
+            <FileDown className="w-4 h-4 mr-2" />
+            Generate Paper
+          </Button>
+        </div>
+      </div>
+
+      {/* Progress Steps */}
+      <div className="glass-card p-4 mb-6">
+        <div className="flex items-center justify-between">
+          {[
+            { num: 1, label: "Basic Details" },
+            { num: 2, label: "Paper Pattern" },
+            { num: 3, label: "Syllabus & Difficulty" },
+            { num: 4, label: "Bloom's Taxonomy" },
+            { num: 5, label: "Security Options" },
+            { num: 6, label: "Add Questions" },
+            { num: 7, label: "Output Format" },
+          ].map((s, idx) => (
+            <div key={s.num} className="flex items-center">
+              <button
+                onClick={() => setStep(s.num)}
+                className={`flex items-center gap-2 ${step >= s.num ? "text-primary" : "text-muted-foreground"}`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  step >= s.num ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                }`}>
+                  {step > s.num ? <CheckCircle2 className="w-4 h-4" /> : s.num}
+                </div>
+                <span className="hidden lg:inline text-sm">{s.label}</span>
+              </button>
+              {idx < 6 && (
+                <div className={`w-8 lg:w-16 h-0.5 mx-2 ${step > s.num ? "bg-primary" : "bg-muted"}`} />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Step Content */}
+      <div className="glass-card p-6">
+        {/* Step 1: Basic Details */}
+        {step === 1 && (
+          <div className="space-y-6">
+            <h3 className="text-lg font-heading font-semibold text-card-foreground flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Basic Exam Details
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label className="text-card-foreground">Exam Name *</Label>
+                <Select value={examName} onValueChange={setExamName}>
+                  <SelectTrigger className="bg-muted/50 border-border/50">
+                    <SelectValue placeholder="Select exam type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="internal1">Internal Test 1</SelectItem>
+                    <SelectItem value="internal2">Internal Test 2</SelectItem>
+                    <SelectItem value="model">Model Exam</SelectItem>
+                    <SelectItem value="endsem">End Semester Exam</SelectItem>
+                    <SelectItem value="reexam">Re-Examination</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-card-foreground">Academic Year *</Label>
+                <Select value={academicYear} onValueChange={setAcademicYear}>
+                  <SelectTrigger className="bg-muted/50 border-border/50">
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="2024-25">2024-2025</SelectItem>
+                    <SelectItem value="2025-26">2025-2026</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-card-foreground">Semester *</Label>
+                <Select value={semester} onValueChange={setSemester}>
+                  <SelectTrigger className="bg-muted/50 border-border/50">
+                    <SelectValue placeholder="Select semester" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1,2,3,4,5,6,7,8].map(s => (
+                      <SelectItem key={s} value={s.toString()}>Semester {s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-card-foreground">Department *</Label>
+                <Select value={department} onValueChange={setDepartment}>
+                  <SelectTrigger className="bg-muted/50 border-border/50">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cse">Computer Science & Engineering</SelectItem>
+                    <SelectItem value="ece">Electronics & Communication</SelectItem>
+                    <SelectItem value="eee">Electrical & Electronics</SelectItem>
+                    <SelectItem value="mech">Mechanical Engineering</SelectItem>
+                    <SelectItem value="civil">Civil Engineering</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-card-foreground">Course / Subject Name *</Label>
+                <Select value={courseName} onValueChange={setCourseName}>
+                  <SelectTrigger className="bg-muted/50 border-border/50">
+                    <SelectValue placeholder="Select subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ds">Data Structures</SelectItem>
+                    <SelectItem value="algo">Algorithms</SelectItem>
+                    <SelectItem value="dbms">Database Management</SelectItem>
+                    <SelectItem value="os">Operating Systems</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-card-foreground">Subject Code *</Label>
+                <Input
+                  value={subjectCode}
+                  onChange={(e) => setSubjectCode(e.target.value)}
+                  placeholder="e.g., CS301"
+                  className="bg-muted/50 border-border/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-card-foreground">Date of Exam *</Label>
+                <Input
+                  type="date"
+                  value={examDate}
+                  onChange={(e) => setExamDate(e.target.value)}
+                  className="bg-muted/50 border-border/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-card-foreground">Duration *</Label>
+                <Select value={duration} onValueChange={setDuration}>
+                  <SelectTrigger className="bg-muted/50 border-border/50">
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 Hour</SelectItem>
+                    <SelectItem value="1.5">1.5 Hours</SelectItem>
+                    <SelectItem value="2">2 Hours</SelectItem>
+                    <SelectItem value="3">3 Hours</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-card-foreground">Maximum Marks *</Label>
+                <Select value={maxMarks} onValueChange={setMaxMarks}>
+                  <SelectTrigger className="bg-muted/50 border-border/50">
+                    <SelectValue placeholder="Select marks" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="25">25 Marks</SelectItem>
+                    <SelectItem value="50">50 Marks</SelectItem>
+                    <SelectItem value="75">75 Marks</SelectItem>
+                    <SelectItem value="100">100 Marks</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Question Paper Pattern */}
+        {step === 2 && (
+          <div className="space-y-6">
+            <h3 className="text-lg font-heading font-semibold text-card-foreground flex items-center gap-2">
+              <Settings2 className="w-5 h-5 text-primary" />
+              Question Paper Pattern / Structure
+            </h3>
+            
+            {/* Part A */}
+            <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+              <h4 className="font-medium text-card-foreground mb-3">Part A - Short Answers</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">No. of Questions</Label>
+                  <Input
+                    type="number"
+                    value={partA.questions}
+                    onChange={(e) => setPartA({ ...partA, questions: parseInt(e.target.value), total: parseInt(e.target.value) * partA.marks })}
+                    className="bg-muted/50 border-border/50"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">Marks Each</Label>
+                  <Input
+                    type="number"
+                    value={partA.marks}
+                    onChange={(e) => setPartA({ ...partA, marks: parseInt(e.target.value), total: partA.questions * parseInt(e.target.value) })}
+                    className="bg-muted/50 border-border/50"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">Total Marks</Label>
+                  <Input
+                    type="number"
+                    value={partA.total}
+                    disabled
+                    className="bg-muted/30 border-border/50"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Part B */}
+            <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+              <h4 className="font-medium text-card-foreground mb-3">Part B - Descriptive (Answer Any)</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">No. of Questions</Label>
+                  <Input
+                    type="number"
+                    value={partB.questions}
+                    onChange={(e) => setPartB({ ...partB, questions: parseInt(e.target.value), total: parseInt(e.target.value) * partB.marks })}
+                    className="bg-muted/50 border-border/50"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">Marks Each</Label>
+                  <Input
+                    type="number"
+                    value={partB.marks}
+                    onChange={(e) => setPartB({ ...partB, marks: parseInt(e.target.value), total: partB.questions * parseInt(e.target.value) })}
+                    className="bg-muted/50 border-border/50"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">Total Marks</Label>
+                  <Input
+                    type="number"
+                    value={partB.total}
+                    disabled
+                    className="bg-muted/30 border-border/50"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Part C */}
+            <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+              <h4 className="font-medium text-card-foreground mb-3">Part C - Long Answers / Essays</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">No. of Questions</Label>
+                  <Input
+                    type="number"
+                    value={partC.questions}
+                    onChange={(e) => setPartC({ ...partC, questions: parseInt(e.target.value), total: parseInt(e.target.value) * partC.marks })}
+                    className="bg-muted/50 border-border/50"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">Marks Each</Label>
+                  <Input
+                    type="number"
+                    value={partC.marks}
+                    onChange={(e) => setPartC({ ...partC, marks: parseInt(e.target.value), total: partC.questions * parseInt(e.target.value) })}
+                    className="bg-muted/50 border-border/50"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">Total Marks</Label>
+                  <Input
+                    type="number"
+                    value={partC.total}
+                    disabled
+                    className="bg-muted/30 border-border/50"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-card-foreground">Grand Total</span>
+                <span className="text-2xl font-bold text-primary">{partA.total + partB.total + partC.total} Marks</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Syllabus Coverage & Difficulty */}
+        {step === 3 && (
+          <div className="space-y-6">
+            <h3 className="text-lg font-heading font-semibold text-card-foreground flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-primary" />
+              Syllabus Coverage & Difficulty Level
+            </h3>
+
+            {/* Units Selection */}
+            <div className="space-y-3">
+              <Label className="text-card-foreground">Select Units to Cover *</Label>
+              <div className="space-y-2">
+                {units.map((unit) => (
+                  <div key={unit} className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <Checkbox
+                      id={unit}
+                      checked={selectedUnits.includes(unit)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedUnits([...selectedUnits, unit]);
+                        } else {
+                          setSelectedUnits(selectedUnits.filter(u => u !== unit));
+                        }
+                      }}
+                    />
+                    <Label htmlFor={unit} className="text-card-foreground cursor-pointer flex-1">
+                      {unit}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Difficulty Distribution */}
+            <div className="space-y-3">
+              <Label className="text-card-foreground">Difficulty Level Distribution</Label>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="p-4 rounded-lg bg-success/10 border border-success/20 text-center">
+                  <p className="text-sm text-muted-foreground mb-2">Easy</p>
+                  <Input
+                    type="number"
+                    value={difficultyMix.easy}
+                    onChange={(e) => setDifficultyMix({ ...difficultyMix, easy: parseInt(e.target.value) })}
+                    className="text-center bg-transparent border-success/30"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">%</p>
+                </div>
+                <div className="p-4 rounded-lg bg-warning/10 border border-warning/20 text-center">
+                  <p className="text-sm text-muted-foreground mb-2">Medium</p>
+                  <Input
+                    type="number"
+                    value={difficultyMix.medium}
+                    onChange={(e) => setDifficultyMix({ ...difficultyMix, medium: parseInt(e.target.value) })}
+                    className="text-center bg-transparent border-warning/30"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">%</p>
+                </div>
+                <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-center">
+                  <p className="text-sm text-muted-foreground mb-2">Hard</p>
+                  <Input
+                    type="number"
+                    value={difficultyMix.hard}
+                    onChange={(e) => setDifficultyMix({ ...difficultyMix, hard: parseInt(e.target.value) })}
+                    className="text-center bg-transparent border-destructive/30"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">%</p>
+                </div>
+              </div>
+              {difficultyMix.easy + difficultyMix.medium + difficultyMix.hard !== 100 && (
+                <p className="text-sm text-destructive">Total must equal 100%</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Bloom's Taxonomy */}
+        {step === 4 && (
+          <div className="space-y-6">
+            <h3 className="text-lg font-heading font-semibold text-card-foreground flex items-center gap-2">
+              <Brain className="w-5 h-5 text-primary" />
+              Bloom's Taxonomy Level Distribution
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Distribute questions across cognitive levels for balanced assessment.
+            </p>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {Object.entries(bloomDistribution).map(([level, value]) => (
+                <div key={level} className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                  <p className="text-sm font-medium text-card-foreground capitalize mb-2">{level}</p>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={value}
+                      onChange={(e) => setBloomDistribution({ ...bloomDistribution, [level]: parseInt(e.target.value) })}
+                      className="bg-muted/50 border-border/50"
+                    />
+                    <span className="text-muted-foreground">%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm text-muted-foreground">Total Distribution</span>
+                <span className={`font-medium ${
+                  Object.values(bloomDistribution).reduce((a, b) => a + b, 0) === 100 
+                    ? "text-success" : "text-destructive"
+                }`}>
+                  {Object.values(bloomDistribution).reduce((a, b) => a + b, 0)}%
+                </span>
+              </div>
+              <div className="flex h-3 rounded-full overflow-hidden">
+                {Object.entries(bloomDistribution).map(([level, value], idx) => (
+                  <div 
+                    key={level} 
+                    style={{ width: `${value}%` }}
+                    className={`${
+                      idx === 0 ? "bg-blue-500" :
+                      idx === 1 ? "bg-green-500" :
+                      idx === 2 ? "bg-yellow-500" :
+                      idx === 3 ? "bg-orange-500" :
+                      idx === 4 ? "bg-red-500" : "bg-purple-500"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Security Options */}
+        {step === 5 && (
+          <div className="space-y-6">
+            <h3 className="text-lg font-heading font-semibold text-card-foreground flex items-center gap-2">
+              <Lock className="w-5 h-5 text-primary" />
+              Randomization & Security Options
+            </h3>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/50">
+                <div className="flex items-center gap-3">
+                  <Shuffle className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-card-foreground">Shuffle Questions</p>
+                    <p className="text-sm text-muted-foreground">Randomize question order in each paper</p>
+                  </div>
+                </div>
+                <Checkbox
+                  checked={shuffleQuestions}
+                  onCheckedChange={(checked) => setShuffleQuestions(checked as boolean)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/50">
+                <div className="flex items-center gap-3">
+                  <Shuffle className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-card-foreground">Shuffle MCQ Options</p>
+                    <p className="text-sm text-muted-foreground">Randomize answer choices for MCQs</p>
+                  </div>
+                </div>
+                <Checkbox
+                  checked={shuffleOptions}
+                  onCheckedChange={(checked) => setShuffleOptions(checked as boolean)}
+                />
+              </div>
+
+              <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <Copy className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium text-card-foreground">Generate Multiple Versions</p>
+                      <p className="text-sm text-muted-foreground">Create different versions (A, B, C...)</p>
+                    </div>
+                  </div>
+                  <Checkbox
+                    checked={multipleVersions}
+                    onCheckedChange={(checked) => setMultipleVersions(checked as boolean)}
+                  />
+                </div>
+                {multipleVersions && (
+                  <div className="mt-3 pl-8">
+                    <Label className="text-sm text-muted-foreground">Number of Versions</Label>
+                    <Select value={versionsCount} onValueChange={setVersionsCount}>
+                      <SelectTrigger className="w-32 mt-1 bg-muted/50 border-border/50">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="2">2 Versions</SelectItem>
+                        <SelectItem value="3">3 Versions</SelectItem>
+                        <SelectItem value="4">4 Versions</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/50">
+                <div className="flex items-center gap-3">
+                  <FileText className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-card-foreground">Add Watermark</p>
+                    <p className="text-sm text-muted-foreground">Add institution watermark to PDF</p>
+                  </div>
+                </div>
+                <Checkbox
+                  checked={watermark}
+                  onCheckedChange={(checked) => setWatermark(checked as boolean)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/50">
+                <div className="flex items-center gap-3">
+                  <Lock className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-card-foreground">Encrypt PDF</p>
+                    <p className="text-sm text-muted-foreground">Password protect the generated PDF</p>
+                  </div>
+                </div>
+                <Checkbox
+                  checked={encryptPdf}
+                  onCheckedChange={(checked) => setEncryptPdf(checked as boolean)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 6: Add Questions */}
+        {step === 6 && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-heading font-semibold text-card-foreground flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                Add Questions
+              </h3>
+              <Button onClick={addQuestion}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Question
+              </Button>
+            </div>
+
+            {questions.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No questions added yet. Click "Add Question" to start.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {questions.map((question, idx) => (
+                  <div key={question.id} className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                    <div className="flex items-start justify-between mb-3">
+                      <span className="text-sm font-medium text-primary">Question {idx + 1}</span>
+                      <Button variant="ghost" size="sm" onClick={() => removeQuestion(question.id)}>
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                    <div className="space-y-3">
+                      <Textarea
+                        placeholder="Enter question text..."
+                        value={question.text}
+                        onChange={(e) => updateQuestion(question.id, "text", e.target.value)}
+                        className="bg-muted/50 border-border/50 resize-none"
+                        rows={3}
+                      />
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        <Select 
+                          value={question.type} 
+                          onValueChange={(v) => updateQuestion(question.id, "type", v)}
+                        >
+                          <SelectTrigger className="bg-muted/50 border-border/50">
+                            <SelectValue placeholder="Type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="mcq">MCQ</SelectItem>
+                            <SelectItem value="short">Short Answer</SelectItem>
+                            <SelectItem value="descriptive">Descriptive</SelectItem>
+                            <SelectItem value="numerical">Numerical</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          type="number"
+                          placeholder="Marks"
+                          value={question.marks}
+                          onChange={(e) => updateQuestion(question.id, "marks", parseInt(e.target.value))}
+                          className="bg-muted/50 border-border/50"
+                        />
+                        <Select 
+                          value={question.unit} 
+                          onValueChange={(v) => updateQuestion(question.id, "unit", v)}
+                        >
+                          <SelectTrigger className="bg-muted/50 border-border/50">
+                            <SelectValue placeholder="Unit" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[1,2,3,4,5].map(u => (
+                              <SelectItem key={u} value={`Unit ${u}`}>Unit {u}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select 
+                          value={question.difficulty} 
+                          onValueChange={(v) => updateQuestion(question.id, "difficulty", v)}
+                        >
+                          <SelectTrigger className="bg-muted/50 border-border/50">
+                            <SelectValue placeholder="Difficulty" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="easy">Easy</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="hard">Hard</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select 
+                          value={question.bloomLevel} 
+                          onValueChange={(v) => updateQuestion(question.id, "bloomLevel", v)}
+                        >
+                          <SelectTrigger className="bg-muted/50 border-border/50">
+                            <SelectValue placeholder="Bloom's" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="remember">Remember</SelectItem>
+                            <SelectItem value="understand">Understand</SelectItem>
+                            <SelectItem value="apply">Apply</SelectItem>
+                            <SelectItem value="analyze">Analyze</SelectItem>
+                            <SelectItem value="evaluate">Evaluate</SelectItem>
+                            <SelectItem value="create">Create</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 7: Output Format */}
+        {step === 7 && (
+          <div className="space-y-6">
+            <h3 className="text-lg font-heading font-semibold text-card-foreground flex items-center gap-2">
+              <Download className="w-5 h-5 text-primary" />
+              Output Format
+            </h3>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-card-foreground">Export Format</Label>
+                <div className="grid grid-cols-3 gap-4">
+                  {["pdf", "docx", "html"].map((format) => (
+                    <button
+                      key={format}
+                      onClick={() => setOutputFormat(format)}
+                      className={`p-4 rounded-lg border text-center transition-colors ${
+                        outputFormat === format 
+                          ? "bg-primary/10 border-primary" 
+                          : "bg-muted/30 border-border/50 hover:bg-muted/50"
+                      }`}
+                    >
+                      <FileText className={`w-8 h-8 mx-auto mb-2 ${outputFormat === format ? "text-primary" : "text-muted-foreground"}`} />
+                      <p className={`font-medium uppercase ${outputFormat === format ? "text-primary" : "text-card-foreground"}`}>
+                        {format}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/50">
+                <div>
+                  <p className="font-medium text-card-foreground">Include Answer Key</p>
+                  <p className="text-sm text-muted-foreground">Generate separate answer key document</p>
+                </div>
+                <Checkbox
+                  checked={includeAnswerKey}
+                  onCheckedChange={(checked) => setIncludeAnswerKey(checked as boolean)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/50">
+                <div>
+                  <p className="font-medium text-card-foreground">Include Marking Scheme</p>
+                  <p className="text-sm text-muted-foreground">Generate detailed marking scheme</p>
+                </div>
+                <Checkbox
+                  checked={includeMarkingScheme}
+                  onCheckedChange={(checked) => setIncludeMarkingScheme(checked as boolean)}
+                />
+              </div>
+            </div>
+
+            {/* Preview & Generate */}
+            <div className="flex gap-4 pt-4 border-t border-border/50">
+              <Button variant="outline" className="flex-1">
+                <Eye className="w-4 h-4 mr-2" />
+                Preview Paper
+              </Button>
+              <Button className="flex-1" onClick={generatePaper}>
+                <FileDown className="w-4 h-4 mr-2" />
+                Generate & Download
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Navigation */}
+        <div className="flex justify-between mt-8 pt-4 border-t border-border/50">
+          <Button 
+            variant="outline" 
+            onClick={() => setStep(Math.max(1, step - 1))}
+            disabled={step === 1}
+          >
+            Previous
+          </Button>
+          <Button 
+            onClick={() => setStep(Math.min(7, step + 1))}
+            disabled={step === 7}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+};
+
+export default StaffQuestionPaper;

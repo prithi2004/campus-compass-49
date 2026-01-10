@@ -48,6 +48,7 @@ const staffMenu: MenuItem[] = [
   { icon: Calendar, label: "Timetable", path: "/staff/timetable" },
   { icon: ClipboardCheck, label: "Attendance", path: "/staff/attendance" },
   { icon: Award, label: "Exams & Results", path: "/staff/exams" },
+  { icon: FileText, label: "Question Paper", path: "/staff/question-paper" },
   { icon: Clock, label: "Leave Requests", path: "/staff/leave" },
   { icon: Settings, label: "Profile", path: "/staff/profile" },
 ];
