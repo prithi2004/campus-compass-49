@@ -25,6 +25,14 @@ import Settings from "./pages/admin/Settings";
 
 // Staff Pages
 import StaffDashboard from "./pages/staff/Dashboard";
+import StaffStudents from "./pages/staff/Students";
+import StaffSubjects from "./pages/staff/Subjects";
+import StaffTimetable from "./pages/staff/Timetable";
+import StaffAttendance from "./pages/staff/Attendance";
+import StaffExams from "./pages/staff/Exams";
+import StaffLeave from "./pages/staff/Leave";
+import StaffProfile from "./pages/staff/Profile";
+import StaffQuestionPaper from "./pages/staff/QuestionPaper";
 
 // Student Pages
 import StudentDashboard from "./pages/student/Dashboard";
@@ -61,13 +69,14 @@ const App = () => (
           
           {/* Staff Routes */}
           <Route path="/staff/dashboard" element={<StaffDashboard />} />
-          <Route path="/staff/students" element={<StaffDashboard />} />
-          <Route path="/staff/subjects" element={<StaffDashboard />} />
-          <Route path="/staff/timetable" element={<StaffDashboard />} />
-          <Route path="/staff/attendance" element={<StaffDashboard />} />
-          <Route path="/staff/exams" element={<StaffDashboard />} />
-          <Route path="/staff/leave" element={<StaffDashboard />} />
-          <Route path="/staff/profile" element={<StaffDashboard />} />
+          <Route path="/staff/students" element={<StaffStudents />} />
+          <Route path="/staff/subjects" element={<StaffSubjects />} />
+          <Route path="/staff/timetable" element={<StaffTimetable />} />
+          <Route path="/staff/attendance" element={<StaffAttendance />} />
+          <Route path="/staff/exams" element={<StaffExams />} />
+          <Route path="/staff/question-paper" element={<StaffQuestionPaper />} />
+          <Route path="/staff/leave" element={<StaffLeave />} />
+          <Route path="/staff/profile" element={<StaffProfile />} />
           
           {/* Student Routes */}
           <Route path="/student/dashboard" element={<StudentDashboard />} />
