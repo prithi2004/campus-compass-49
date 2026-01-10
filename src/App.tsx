@@ -28,6 +28,10 @@ import StaffDashboard from "./pages/staff/Dashboard";
 
 // Student Pages
 import StudentDashboard from "./pages/student/Dashboard";
+import StudentCourses from "./pages/student/Courses";
+import StudentAttendance from "./pages/student/Attendance";
+import StudentResults from "./pages/student/Results";
+import StudentFees from "./pages/student/Fees";
 
 const queryClient = new QueryClient();
 
@@ -67,11 +71,11 @@ const App = () => (
           
           {/* Student Routes */}
           <Route path="/student/dashboard" element={<StudentDashboard />} />
-          <Route path="/student/courses" element={<StudentDashboard />} />
+          <Route path="/student/courses" element={<StudentCourses />} />
           <Route path="/student/timetable" element={<StudentDashboard />} />
-          <Route path="/student/attendance" element={<StudentDashboard />} />
-          <Route path="/student/results" element={<StudentDashboard />} />
-          <Route path="/student/fees" element={<StudentDashboard />} />
+          <Route path="/student/attendance" element={<StudentAttendance />} />
+          <Route path="/student/results" element={<StudentResults />} />
+          <Route path="/student/fees" element={<StudentFees />} />
           <Route path="/student/certificates" element={<StudentDashboard />} />
           <Route path="/student/profile" element={<StudentDashboard />} />
           
