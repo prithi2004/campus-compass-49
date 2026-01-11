@@ -33,6 +33,7 @@ import StaffExams from "./pages/staff/Exams";
 import StaffLeave from "./pages/staff/Leave";
 import StaffProfile from "./pages/staff/Profile";
 import StaffQuestionPaper from "./pages/staff/QuestionPaper";
+import StaffQuestionBank from "./pages/staff/QuestionBank";
 
 // Student Pages
 import StudentDashboard from "./pages/student/Dashboard";
@@ -75,6 +76,7 @@ const App = () => (
           <Route path="/staff/attendance" element={<StaffAttendance />} />
           <Route path="/staff/exams" element={<StaffExams />} />
           <Route path="/staff/question-paper" element={<StaffQuestionPaper />} />
+          <Route path="/staff/question-bank" element={<StaffQuestionBank />} />
           <Route path="/staff/leave" element={<StaffLeave />} />
           <Route path="/staff/profile" element={<StaffProfile />} />
           
