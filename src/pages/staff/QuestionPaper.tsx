@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -11,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   FileText,
   Plus,
@@ -27,6 +28,11 @@ import {
   Trash2,
   Copy,
   FileDown,
+  Database,
+  Search,
+  Star,
+  Tag,
+  X,
 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -41,10 +47,131 @@ interface Question {
   bloomLevel: string;
 }
 
+interface BankQuestion {
+  id: string;
+  question: string;
+  type: string;
+  subject: string;
+  subjectCode: string;
+  unit: string;
+  difficulty: string;
+  bloom: string;
+  marks: number;
+  tags: string[];
+  options?: string[];
+  correctAnswer?: string;
+  isFavorite: boolean;
+}
+
+// Question Bank Data
+const questionBankData: BankQuestion[] = [
+  {
+    id: "1",
+    question: "What is the time complexity of binary search algorithm?",
+    type: "mcq",
+    subject: "Data Structures",
+    subjectCode: "CS201",
+    unit: "Unit 2",
+    difficulty: "easy",
+    bloom: "Remember",
+    marks: 2,
+    tags: ["algorithms", "searching", "complexity"],
+    options: ["O(n)", "O(log n)", "O(n²)", "O(1)"],
+    correctAnswer: "O(log n)",
+    isFavorite: true
+  },
+  {
+    id: "2",
+    question: "Explain the concept of polymorphism in Object-Oriented Programming with suitable examples.",
+    type: "descriptive",
+    subject: "Object Oriented Programming",
+    subjectCode: "CS202",
+    unit: "Unit 3",
+    difficulty: "medium",
+    bloom: "Understand",
+    marks: 10,
+    tags: ["oop", "polymorphism"],
+    isFavorite: false
+  },
+  {
+    id: "3",
+    question: "The process of converting a source code into machine code is called ___________.",
+    type: "short",
+    subject: "Compiler Design",
+    subjectCode: "CS401",
+    unit: "Unit 1",
+    difficulty: "easy",
+    bloom: "Remember",
+    marks: 1,
+    tags: ["compiler", "basics"],
+    correctAnswer: "Compilation",
+    isFavorite: true
+  },
+  {
+    id: "4",
+    question: "Write a short note on TCP/IP protocol suite.",
+    type: "short",
+    subject: "Computer Networks",
+    subjectCode: "CS301",
+    unit: "Unit 2",
+    difficulty: "medium",
+    bloom: "Understand",
+    marks: 5,
+    tags: ["networking", "protocols"],
+    isFavorite: false
+  },
+  {
+    id: "5",
+    question: "Derive the time complexity of merge sort algorithm and explain its divide and conquer approach.",
+    type: "descriptive",
+    subject: "Data Structures",
+    subjectCode: "CS201",
+    unit: "Unit 2",
+    difficulty: "hard",
+    bloom: "Analyze",
+    marks: 15,
+    tags: ["algorithms", "sorting", "complexity"],
+    isFavorite: true
+  },
+  {
+    id: "6",
+    question: "What is a stack? List its applications.",
+    type: "short",
+    subject: "Data Structures",
+    subjectCode: "CS201",
+    unit: "Unit 3",
+    difficulty: "easy",
+    bloom: "Remember",
+    marks: 5,
+    tags: ["stack", "applications"],
+    isFavorite: false
+  }
+];
+
 const StaffQuestionPaper = () => {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [questions, setQuestions] = useState<Question[]>([]);
+  
+  // Question Bank State
+  const [questionBank, setQuestionBank] = useState<BankQuestion[]>(questionBankData);
+  const [bankSearchQuery, setBankSearchQuery] = useState("");
+  const [bankFilterDifficulty, setBankFilterDifficulty] = useState("all");
+  const [bankFilterType, setBankFilterType] = useState("all");
+  const [showBankDialog, setShowBankDialog] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [newBankQuestion, setNewBankQuestion] = useState<Partial<BankQuestion>>({
+    question: "",
+    type: "short",
+    subject: "",
+    subjectCode: "",
+    unit: "Unit 1",
+    difficulty: "medium",
+    bloom: "Understand",
+    marks: 5,
+    tags: []
+  });
+  const [newTag, setNewTag] = useState("");
   
   // Basic Details
   const [examName, setExamName] = useState("");
@@ -97,6 +224,15 @@ const StaffQuestionPaper = () => {
     "Unit 5: Sorting and Searching",
   ];
 
+  // Filter question bank
+  const filteredBankQuestions = questionBank.filter(q => {
+    const matchesSearch = q.question.toLowerCase().includes(bankSearchQuery.toLowerCase()) ||
+                         q.tags.some(t => t.toLowerCase().includes(bankSearchQuery.toLowerCase()));
+    const matchesDifficulty = bankFilterDifficulty === "all" || q.difficulty === bankFilterDifficulty;
+    const matchesType = bankFilterType === "all" || q.type === bankFilterType;
+    return matchesSearch && matchesDifficulty && matchesType;
+  });
+
   const addQuestion = () => {
     const newQuestion: Question = {
       id: questions.length + 1,
@@ -108,6 +244,89 @@ const StaffQuestionPaper = () => {
       bloomLevel: "understand",
     };
     setQuestions([...questions, newQuestion]);
+  };
+
+  const addFromBank = (bankQ: BankQuestion) => {
+    const newQuestion: Question = {
+      id: questions.length + 1,
+      text: bankQ.question,
+      type: bankQ.type,
+      marks: bankQ.marks,
+      unit: bankQ.unit,
+      difficulty: bankQ.difficulty,
+      bloomLevel: bankQ.bloom.toLowerCase(),
+    };
+    setQuestions([...questions, newQuestion]);
+    toast({
+      title: "Question Added",
+      description: "Question imported from bank successfully.",
+    });
+  };
+
+  const saveToBank = () => {
+    if (!newBankQuestion.question) {
+      toast({
+        title: "Error",
+        description: "Please enter question text.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const bankQ: BankQuestion = {
+      id: Date.now().toString(),
+      question: newBankQuestion.question || "",
+      type: newBankQuestion.type || "short",
+      subject: newBankQuestion.subject || courseName || "General",
+      subjectCode: newBankQuestion.subjectCode || subjectCode || "N/A",
+      unit: newBankQuestion.unit || "Unit 1",
+      difficulty: newBankQuestion.difficulty || "medium",
+      bloom: newBankQuestion.bloom || "Understand",
+      marks: newBankQuestion.marks || 5,
+      tags: newBankQuestion.tags || [],
+      isFavorite: false
+    };
+    
+    setQuestionBank([bankQ, ...questionBank]);
+    setNewBankQuestion({
+      question: "",
+      type: "short",
+      subject: "",
+      subjectCode: "",
+      unit: "Unit 1",
+      difficulty: "medium",
+      bloom: "Understand",
+      marks: 5,
+      tags: []
+    });
+    setShowSaveDialog(false);
+    toast({
+      title: "Saved to Bank",
+      description: "Question saved to your question bank.",
+    });
+  };
+
+  const addTagToNewQuestion = () => {
+    if (newTag.trim() && !newBankQuestion.tags?.includes(newTag.trim().toLowerCase())) {
+      setNewBankQuestion({
+        ...newBankQuestion,
+        tags: [...(newBankQuestion.tags || []), newTag.trim().toLowerCase()]
+      });
+      setNewTag("");
+    }
+  };
+
+  const removeTagFromNewQuestion = (tag: string) => {
+    setNewBankQuestion({
+      ...newBankQuestion,
+      tags: newBankQuestion.tags?.filter(t => t !== tag) || []
+    });
+  };
+
+  const toggleBankFavorite = (id: string) => {
+    setQuestionBank(questionBank.map(q => 
+      q.id === id ? { ...q, isFavorite: !q.isFavorite } : q
+    ));
   };
 
   const updateQuestion = (id: number, field: keyof Question, value: string | number) => {
@@ -132,6 +351,15 @@ const StaffQuestionPaper = () => {
       title: "Draft Saved",
       description: "Question paper draft has been saved.",
     });
+  };
+
+  const getDifficultyColor = (difficulty: string) => {
+    const colors: Record<string, string> = {
+      easy: "bg-green-500/20 text-green-400 border-green-500/30",
+      medium: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+      hard: "bg-red-500/20 text-red-400 border-red-500/30"
+    };
+    return colors[difficulty] || "";
   };
 
   return (
@@ -665,24 +893,270 @@ const StaffQuestionPaper = () => {
           </div>
         )}
 
-        {/* Step 6: Add Questions */}
+        {/* Step 6: Add Questions with Question Bank */}
         {step === 6 && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <h3 className="text-lg font-heading font-semibold text-card-foreground flex items-center gap-2">
                 <FileText className="w-5 h-5 text-primary" />
                 Add Questions
               </h3>
-              <Button onClick={addQuestion}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Question
-              </Button>
+              <div className="flex gap-2">
+                {/* Import from Question Bank */}
+                <Dialog open={showBankDialog} onOpenChange={setShowBankDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <Database className="w-4 h-4 mr-2" />
+                      Import from Bank
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="glass-card border-border/50 max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+                    <DialogHeader>
+                      <DialogTitle className="text-card-foreground flex items-center gap-2">
+                        <Database className="w-5 h-5 text-primary" />
+                        Question Bank ({questionBank.length} questions)
+                      </DialogTitle>
+                    </DialogHeader>
+                    
+                    {/* Search & Filters */}
+                    <div className="flex flex-col md:flex-row gap-3 py-3">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          value={bankSearchQuery}
+                          onChange={(e) => setBankSearchQuery(e.target.value)}
+                          placeholder="Search questions or tags..."
+                          className="bg-muted/50 border-border/50 pl-10"
+                        />
+                      </div>
+                      <Select value={bankFilterDifficulty} onValueChange={setBankFilterDifficulty}>
+                        <SelectTrigger className="w-[130px] bg-muted/50 border-border/50">
+                          <SelectValue placeholder="Difficulty" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Levels</SelectItem>
+                          <SelectItem value="easy">Easy</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="hard">Hard</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={bankFilterType} onValueChange={setBankFilterType}>
+                        <SelectTrigger className="w-[140px] bg-muted/50 border-border/50">
+                          <SelectValue placeholder="Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Types</SelectItem>
+                          <SelectItem value="mcq">MCQ</SelectItem>
+                          <SelectItem value="short">Short Answer</SelectItem>
+                          <SelectItem value="descriptive">Descriptive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* Questions List */}
+                    <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+                      {filteredBankQuestions.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Database className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                          <p>No questions found</p>
+                        </div>
+                      ) : (
+                        filteredBankQuestions.map(q => (
+                          <div key={q.id} className="p-4 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/50 transition-colors">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1">
+                                <p className="text-card-foreground font-medium mb-2">{q.question}</p>
+                                <div className="flex flex-wrap items-center gap-2 mb-2">
+                                  <Badge variant="outline" className="capitalize">{q.type}</Badge>
+                                  <Badge variant="outline" className={getDifficultyColor(q.difficulty)}>
+                                    {q.difficulty}
+                                  </Badge>
+                                  <Badge variant="outline">{q.marks} marks</Badge>
+                                  <Badge variant="outline" className="text-muted-foreground">{q.bloom}</Badge>
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {q.tags.map(tag => (
+                                    <span key={tag} className="text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded">
+                                      #{tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => {
+                                    addFromBank(q);
+                                    setShowBankDialog(false);
+                                  }}
+                                >
+                                  <Plus className="w-4 h-4 mr-1" />
+                                  Add
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => toggleBankFavorite(q.id)}
+                                >
+                                  <Star className={`w-4 h-4 ${q.isFavorite ? "text-yellow-400 fill-current" : "text-muted-foreground"}`} />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Save to Question Bank */}
+                <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <Save className="w-4 h-4 mr-2" />
+                      Save to Bank
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="glass-card border-border/50 max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle className="text-card-foreground">Save Question to Bank</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-4">
+                      <div>
+                        <Label className="text-card-foreground">Question Text *</Label>
+                        <Textarea
+                          value={newBankQuestion.question}
+                          onChange={(e) => setNewBankQuestion({...newBankQuestion, question: e.target.value})}
+                          placeholder="Enter your question..."
+                          className="bg-muted/50 border-border/50 mt-1"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                          <Label className="text-muted-foreground text-sm">Type</Label>
+                          <Select 
+                            value={newBankQuestion.type} 
+                            onValueChange={(v) => setNewBankQuestion({...newBankQuestion, type: v})}
+                          >
+                            <SelectTrigger className="bg-muted/50 border-border/50 mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="mcq">MCQ</SelectItem>
+                              <SelectItem value="short">Short Answer</SelectItem>
+                              <SelectItem value="descriptive">Descriptive</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground text-sm">Difficulty</Label>
+                          <Select 
+                            value={newBankQuestion.difficulty} 
+                            onValueChange={(v) => setNewBankQuestion({...newBankQuestion, difficulty: v})}
+                          >
+                            <SelectTrigger className="bg-muted/50 border-border/50 mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="easy">Easy</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="hard">Hard</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground text-sm">Unit</Label>
+                          <Select 
+                            value={newBankQuestion.unit} 
+                            onValueChange={(v) => setNewBankQuestion({...newBankQuestion, unit: v})}
+                          >
+                            <SelectTrigger className="bg-muted/50 border-border/50 mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[1,2,3,4,5].map(u => (
+                                <SelectItem key={u} value={`Unit ${u}`}>Unit {u}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground text-sm">Marks</Label>
+                          <Input
+                            type="number"
+                            value={newBankQuestion.marks}
+                            onChange={(e) => setNewBankQuestion({...newBankQuestion, marks: parseInt(e.target.value) || 0})}
+                            className="bg-muted/50 border-border/50 mt-1"
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Tags */}
+                      <div>
+                        <Label className="text-muted-foreground text-sm">Tags</Label>
+                        <div className="flex gap-2 mt-1">
+                          <Input
+                            value={newTag}
+                            onChange={(e) => setNewTag(e.target.value)}
+                            placeholder="Add a tag..."
+                            className="bg-muted/50 border-border/50"
+                            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTagToNewQuestion())}
+                          />
+                          <Button type="button" onClick={addTagToNewQuestion} size="sm">
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {newBankQuestion.tags?.map(tag => (
+                            <Badge key={tag} variant="outline" className="bg-muted/30">
+                              {tag}
+                              <button onClick={() => removeTagFromNewQuestion(tag)} className="ml-1">
+                                <X className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+                          Cancel
+                        </Button>
+                        <Button onClick={saveToBank}>
+                          <Save className="w-4 h-4 mr-2" />
+                          Save to Bank
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                <Button onClick={addQuestion}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add New
+                </Button>
+              </div>
+            </div>
+
+            {/* Bank Stats */}
+            <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Database className="w-5 h-5 text-primary" />
+                <span className="text-card-foreground">
+                  <strong>{questionBank.length}</strong> questions in your bank
+                </span>
+              </div>
+              <span className="text-muted-foreground text-sm">
+                {questionBank.filter(q => q.isFavorite).length} favorites
+              </span>
             </div>
 
             {questions.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No questions added yet. Click "Add Question" to start.</p>
+                <p>No questions added yet.</p>
+                <p className="text-sm mt-1">Click "Import from Bank" or "Add New" to start.</p>
               </div>
             ) : (
               <div className="space-y-4">
