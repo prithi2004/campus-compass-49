@@ -15,6 +15,7 @@ import {
   BarChart3,
   Clock,
   Award,
+  Database,
 } from "lucide-react";
 
 interface MenuItem {
@@ -49,6 +50,7 @@ const staffMenu: MenuItem[] = [
   { icon: ClipboardCheck, label: "Attendance", path: "/staff/attendance" },
   { icon: Award, label: "Exams & Results", path: "/staff/exams" },
   { icon: FileText, label: "Question Paper", path: "/staff/question-paper" },
+  { icon: Database, label: "Question Bank", path: "/staff/question-bank" },
   { icon: Clock, label: "Leave Requests", path: "/staff/leave" },
   { icon: Settings, label: "Profile", path: "/staff/profile" },
 ];
