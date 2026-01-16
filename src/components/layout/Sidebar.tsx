@@ -15,6 +15,12 @@ import {
   BarChart3,
   Clock,
   Award,
+  Wand2,
+  Fingerprint,
+  Bell,
+  Trophy,
+  QrCode,
+  UserCheck,
 } from "lucide-react";
 
 interface MenuItem {
@@ -29,12 +35,16 @@ interface SidebarProps {
 
 const adminMenu: MenuItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin/dashboard" },
+  { icon: UserCheck, label: "Status Management", path: "/admin/status" },
   { icon: Users, label: "Staff Management", path: "/admin/staff" },
   { icon: GraduationCap, label: "Student Management", path: "/admin/students" },
   { icon: Building2, label: "Departments", path: "/admin/departments" },
   { icon: BookOpen, label: "Courses & Subjects", path: "/admin/courses" },
-  { icon: Calendar, label: "Timetable", path: "/admin/timetable" },
-  { icon: ClipboardCheck, label: "Attendance", path: "/admin/attendance" },
+  { icon: Wand2, label: "Auto Timetable", path: "/admin/auto-timetable" },
+  { icon: Fingerprint, label: "Biometric Attendance", path: "/admin/biometric" },
+  { icon: Bell, label: "Notifications", path: "/admin/notifications" },
+  { icon: Trophy, label: "Points System", path: "/admin/points" },
+  { icon: QrCode, label: "QR Admission", path: "/admin/qr-admission" },
   { icon: Award, label: "Exams & Results", path: "/admin/exams" },
   { icon: CreditCard, label: "Fee Management", path: "/admin/fees" },
   { icon: BarChart3, label: "Reports", path: "/admin/reports" },

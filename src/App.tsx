@@ -22,6 +22,12 @@ import Exams from "./pages/admin/Exams";
 import Fees from "./pages/admin/Fees";
 import Reports from "./pages/admin/Reports";
 import Settings from "./pages/admin/Settings";
+import AutoTimetable from "./pages/admin/AutoTimetable";
+import BiometricAttendance from "./pages/admin/BiometricAttendance";
+import Notifications from "./pages/admin/Notifications";
+import PointsSystem from "./pages/admin/PointsSystem";
+import QRAdmission from "./pages/admin/QRAdmission";
+import StatusManagement from "./pages/admin/StatusManagement";
 
 // Staff Pages
 import StaffDashboard from "./pages/staff/Dashboard";
@@ -56,12 +62,16 @@ const App = () => (
           
           {/* Admin Routes */}
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/status" element={<StatusManagement />} />
           <Route path="/admin/staff" element={<StaffManagement />} />
           <Route path="/admin/students" element={<StudentManagement />} />
           <Route path="/admin/departments" element={<Departments />} />
           <Route path="/admin/courses" element={<Courses />} />
-          <Route path="/admin/timetable" element={<Timetable />} />
-          <Route path="/admin/attendance" element={<Attendance />} />
+          <Route path="/admin/auto-timetable" element={<AutoTimetable />} />
+          <Route path="/admin/biometric" element={<BiometricAttendance />} />
+          <Route path="/admin/notifications" element={<Notifications />} />
+          <Route path="/admin/points" element={<PointsSystem />} />
+          <Route path="/admin/qr-admission" element={<QRAdmission />} />
           <Route path="/admin/exams" element={<Exams />} />
           <Route path="/admin/fees" element={<Fees />} />
           <Route path="/admin/reports" element={<Reports />} />
