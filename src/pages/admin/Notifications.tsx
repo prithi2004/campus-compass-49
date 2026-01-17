@@ -102,7 +102,7 @@ const Notifications = () => {
   };
 
   return (
-    <DashboardLayout role="admin">
+    <DashboardLayout role="admin" title="Notifications">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
