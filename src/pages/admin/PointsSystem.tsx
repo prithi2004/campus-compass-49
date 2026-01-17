@@ -121,7 +121,7 @@ const PointsSystem = () => {
   };
 
   return (
-    <DashboardLayout role="admin">
+    <DashboardLayout role="admin" title="Points System">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">

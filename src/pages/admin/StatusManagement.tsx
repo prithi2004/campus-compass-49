@@ -117,7 +117,7 @@ const StatusManagement = () => {
   };
 
   return (
-    <DashboardLayout role="admin">
+    <DashboardLayout role="admin" title="Status Management">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">

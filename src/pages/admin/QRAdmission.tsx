@@ -194,7 +194,7 @@ const QRAdmission = () => {
   );
 
   return (
-    <DashboardLayout role="admin">
+    <DashboardLayout role="admin" title="QR Admission">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
