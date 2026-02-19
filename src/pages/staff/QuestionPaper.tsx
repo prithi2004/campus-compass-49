@@ -33,9 +33,14 @@ import {
   Star,
   Tag,
   X,
+  Loader2,
 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useQuestionBank, useCreateBankQuestion, useToggleFavorite, type QuestionBankItem } from "@/hooks/useQuestionBank";
+import { useSavePaperConfig } from "@/hooks/useQuestionPaperConfig";
+import { useDepartments } from "@/hooks/useDepartments";
+import { useSubjects, useAcademicYears } from "@/hooks/useSubjects";
 
 interface Question {
   id: number;
@@ -47,129 +52,35 @@ interface Question {
   bloomLevel: string;
 }
 
-interface BankQuestion {
-  id: string;
-  question: string;
-  type: string;
-  subject: string;
-  subjectCode: string;
-  unit: string;
-  difficulty: string;
-  bloom: string;
-  marks: number;
-  tags: string[];
-  options?: string[];
-  correctAnswer?: string;
-  isFavorite: boolean;
-}
-
-// Question Bank Data
-const questionBankData: BankQuestion[] = [
-  {
-    id: "1",
-    question: "What is the time complexity of binary search algorithm?",
-    type: "mcq",
-    subject: "Data Structures",
-    subjectCode: "CS201",
-    unit: "Unit 2",
-    difficulty: "easy",
-    bloom: "Remember",
-    marks: 2,
-    tags: ["algorithms", "searching", "complexity"],
-    options: ["O(n)", "O(log n)", "O(n²)", "O(1)"],
-    correctAnswer: "O(log n)",
-    isFavorite: true
-  },
-  {
-    id: "2",
-    question: "Explain the concept of polymorphism in Object-Oriented Programming with suitable examples.",
-    type: "descriptive",
-    subject: "Object Oriented Programming",
-    subjectCode: "CS202",
-    unit: "Unit 3",
-    difficulty: "medium",
-    bloom: "Understand",
-    marks: 10,
-    tags: ["oop", "polymorphism"],
-    isFavorite: false
-  },
-  {
-    id: "3",
-    question: "The process of converting a source code into machine code is called ___________.",
-    type: "short",
-    subject: "Compiler Design",
-    subjectCode: "CS401",
-    unit: "Unit 1",
-    difficulty: "easy",
-    bloom: "Remember",
-    marks: 1,
-    tags: ["compiler", "basics"],
-    correctAnswer: "Compilation",
-    isFavorite: true
-  },
-  {
-    id: "4",
-    question: "Write a short note on TCP/IP protocol suite.",
-    type: "short",
-    subject: "Computer Networks",
-    subjectCode: "CS301",
-    unit: "Unit 2",
-    difficulty: "medium",
-    bloom: "Understand",
-    marks: 5,
-    tags: ["networking", "protocols"],
-    isFavorite: false
-  },
-  {
-    id: "5",
-    question: "Derive the time complexity of merge sort algorithm and explain its divide and conquer approach.",
-    type: "descriptive",
-    subject: "Data Structures",
-    subjectCode: "CS201",
-    unit: "Unit 2",
-    difficulty: "hard",
-    bloom: "Analyze",
-    marks: 15,
-    tags: ["algorithms", "sorting", "complexity"],
-    isFavorite: true
-  },
-  {
-    id: "6",
-    question: "What is a stack? List its applications.",
-    type: "short",
-    subject: "Data Structures",
-    subjectCode: "CS201",
-    unit: "Unit 3",
-    difficulty: "easy",
-    bloom: "Remember",
-    marks: 5,
-    tags: ["stack", "applications"],
-    isFavorite: false
-  }
-];
-
 const StaffQuestionPaper = () => {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [questions, setQuestions] = useState<Question[]>([]);
   
+  // Backend hooks
+  const { data: questionBank = [], isLoading: bankLoading } = useQuestionBank();
+  const createBankQuestion = useCreateBankQuestion();
+  const toggleFavorite = useToggleFavorite();
+  const savePaperConfig = useSavePaperConfig();
+  const { data: departments = [] } = useDepartments();
+  const { data: subjects = [] } = useSubjects();
+  const { data: academicYears = [] } = useAcademicYears();
+  
   // Question Bank State
-  const [questionBank, setQuestionBank] = useState<BankQuestion[]>(questionBankData);
   const [bankSearchQuery, setBankSearchQuery] = useState("");
   const [bankFilterDifficulty, setBankFilterDifficulty] = useState("all");
   const [bankFilterType, setBankFilterType] = useState("all");
   const [showBankDialog, setShowBankDialog] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
-  const [newBankQuestion, setNewBankQuestion] = useState<Partial<BankQuestion>>({
+  const [newBankQuestion, setNewBankQuestion] = useState({
     question: "",
     type: "short",
-    subject: "",
-    subjectCode: "",
+    subject_id: "",
     unit: "Unit 1",
     difficulty: "medium",
-    bloom: "Understand",
+    bloom_level: "Understand",
     marks: 5,
-    tags: []
+    tags: [] as string[],
   });
   const [newTag, setNewTag] = useState("");
   
@@ -246,7 +157,7 @@ const StaffQuestionPaper = () => {
     setQuestions([...questions, newQuestion]);
   };
 
-  const addFromBank = (bankQ: BankQuestion) => {
+  const addFromBank = (bankQ: QuestionBankItem) => {
     const newQuestion: Question = {
       id: questions.length + 1,
       text: bankQ.question,
@@ -254,7 +165,7 @@ const StaffQuestionPaper = () => {
       marks: bankQ.marks,
       unit: bankQ.unit,
       difficulty: bankQ.difficulty,
-      bloomLevel: bankQ.bloom.toLowerCase(),
+      bloomLevel: bankQ.bloom_level.toLowerCase(),
     };
     setQuestions([...questions, newQuestion]);
     toast({
@@ -264,46 +175,37 @@ const StaffQuestionPaper = () => {
   };
 
   const saveToBank = () => {
-    if (!newBankQuestion.question) {
+    if (!newBankQuestion.question || !newBankQuestion.subject_id) {
       toast({
         title: "Error",
-        description: "Please enter question text.",
+        description: "Please enter question text and select a subject.",
         variant: "destructive"
       });
       return;
     }
     
-    const bankQ: BankQuestion = {
-      id: Date.now().toString(),
-      question: newBankQuestion.question || "",
-      type: newBankQuestion.type || "short",
-      subject: newBankQuestion.subject || courseName || "General",
-      subjectCode: newBankQuestion.subjectCode || subjectCode || "N/A",
-      unit: newBankQuestion.unit || "Unit 1",
-      difficulty: newBankQuestion.difficulty || "medium",
-      bloom: newBankQuestion.bloom || "Understand",
-      marks: newBankQuestion.marks || 5,
-      tags: newBankQuestion.tags || [],
-      isFavorite: false
-    };
+    createBankQuestion.mutate({
+      question: newBankQuestion.question,
+      type: newBankQuestion.type,
+      subject_id: newBankQuestion.subject_id,
+      unit: newBankQuestion.unit,
+      difficulty: newBankQuestion.difficulty,
+      bloom_level: newBankQuestion.bloom_level,
+      marks: newBankQuestion.marks,
+      tags: newBankQuestion.tags,
+    });
     
-    setQuestionBank([bankQ, ...questionBank]);
     setNewBankQuestion({
       question: "",
       type: "short",
-      subject: "",
-      subjectCode: "",
+      subject_id: "",
       unit: "Unit 1",
       difficulty: "medium",
-      bloom: "Understand",
+      bloom_level: "Understand",
       marks: 5,
-      tags: []
+      tags: [],
     });
     setShowSaveDialog(false);
-    toast({
-      title: "Saved to Bank",
-      description: "Question saved to your question bank.",
-    });
   };
 
   const addTagToNewQuestion = () => {
@@ -324,11 +226,11 @@ const StaffQuestionPaper = () => {
   };
 
   const toggleBankFavorite = (id: string) => {
-    setQuestionBank(questionBank.map(q => 
-      q.id === id ? { ...q, isFavorite: !q.isFavorite } : q
-    ));
+    const item = questionBank.find(q => q.id === id);
+    if (item) {
+      toggleFavorite.mutate({ id, is_favorite: !item.is_favorite });
+    }
   };
-
   const updateQuestion = (id: number, field: keyof Question, value: string | number) => {
     setQuestions(questions.map(q => 
       q.id === id ? { ...q, [field]: value } : q
@@ -340,16 +242,48 @@ const StaffQuestionPaper = () => {
   };
 
   const generatePaper = () => {
-    toast({
-      title: "Question Paper Generated",
-      description: "Your question paper has been generated successfully.",
+    if (!courseName) {
+      toast({ title: "Error", description: "Please select a subject first.", variant: "destructive" });
+      return;
+    }
+    savePaperConfig.mutate({
+      subject_id: courseName,
+      title: examName || "Untitled Paper",
+      academic_year_id: academicYear || null,
+      semester: semester ? parseInt(semester) : null,
+      department_id: department || null,
+      exam_date: examDate || null,
+      duration,
+      max_marks: maxMarks ? parseInt(maxMarks) : 100,
+      paper_pattern: { partA, partB, partC },
+      difficulty_mix: difficultyMix,
+      bloom_distribution: bloomDistribution,
+      security_options: { shuffleQuestions, shuffleOptions, multipleVersions, versionsCount, watermark, encryptPdf },
+      output_format: outputFormat,
+      status: "generated",
     });
   };
 
   const saveDraft = () => {
-    toast({
-      title: "Draft Saved",
-      description: "Question paper draft has been saved.",
+    if (!courseName) {
+      toast({ title: "Error", description: "Please select a subject first.", variant: "destructive" });
+      return;
+    }
+    savePaperConfig.mutate({
+      subject_id: courseName,
+      title: examName || "Untitled Draft",
+      academic_year_id: academicYear || null,
+      semester: semester ? parseInt(semester) : null,
+      department_id: department || null,
+      exam_date: examDate || null,
+      duration,
+      max_marks: maxMarks ? parseInt(maxMarks) : 100,
+      paper_pattern: { partA, partB, partC },
+      difficulty_mix: difficultyMix,
+      bloom_distribution: bloomDistribution,
+      security_options: { shuffleQuestions, shuffleOptions, multipleVersions, versionsCount, watermark, encryptPdf },
+      output_format: outputFormat,
+      status: "draft",
     });
   };
 
@@ -446,8 +380,9 @@ const StaffQuestionPaper = () => {
                     <SelectValue placeholder="Select year" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="2024-25">2024-2025</SelectItem>
-                    <SelectItem value="2025-26">2025-2026</SelectItem>
+                    {academicYears.map(ay => (
+                      <SelectItem key={ay.id} value={ay.id}>{ay.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -471,25 +406,26 @@ const StaffQuestionPaper = () => {
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cse">Computer Science & Engineering</SelectItem>
-                    <SelectItem value="ece">Electronics & Communication</SelectItem>
-                    <SelectItem value="eee">Electrical & Electronics</SelectItem>
-                    <SelectItem value="mech">Mechanical Engineering</SelectItem>
-                    <SelectItem value="civil">Civil Engineering</SelectItem>
+                    {departments.map(dept => (
+                      <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label className="text-card-foreground">Course / Subject Name *</Label>
-                <Select value={courseName} onValueChange={setCourseName}>
+                <Select value={courseName} onValueChange={(val) => {
+                  setCourseName(val);
+                  const sub = subjects.find(s => s.id === val);
+                  if (sub) setSubjectCode(sub.code);
+                }}>
                   <SelectTrigger className="bg-muted/50 border-border/50">
                     <SelectValue placeholder="Select subject" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ds">Data Structures</SelectItem>
-                    <SelectItem value="algo">Algorithms</SelectItem>
-                    <SelectItem value="dbms">Database Management</SelectItem>
-                    <SelectItem value="os">Operating Systems</SelectItem>
+                    {subjects.map(sub => (
+                      <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -972,7 +908,7 @@ const StaffQuestionPaper = () => {
                                     {q.difficulty}
                                   </Badge>
                                   <Badge variant="outline">{q.marks} marks</Badge>
-                                  <Badge variant="outline" className="text-muted-foreground">{q.bloom}</Badge>
+                                  <Badge variant="outline" className="text-muted-foreground">{q.bloom_level}</Badge>
                                 </div>
                                 <div className="flex flex-wrap gap-1">
                                   {q.tags.map(tag => (
@@ -998,7 +934,7 @@ const StaffQuestionPaper = () => {
                                   size="sm"
                                   onClick={() => toggleBankFavorite(q.id)}
                                 >
-                                  <Star className={`w-4 h-4 ${q.isFavorite ? "text-yellow-400 fill-current" : "text-muted-foreground"}`} />
+                                  <Star className={`w-4 h-4 ${q.is_favorite ? "text-yellow-400 fill-current" : "text-muted-foreground"}`} />
                                 </Button>
                               </div>
                             </div>
@@ -1032,7 +968,23 @@ const StaffQuestionPaper = () => {
                           rows={3}
                         />
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div>
+                          <Label className="text-muted-foreground text-sm">Subject *</Label>
+                          <Select 
+                            value={newBankQuestion.subject_id} 
+                            onValueChange={(v) => setNewBankQuestion({...newBankQuestion, subject_id: v})}
+                          >
+                            <SelectTrigger className="bg-muted/50 border-border/50 mt-1">
+                              <SelectValue placeholder="Select subject" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {subjects.map(sub => (
+                                <SelectItem key={sub.id} value={sub.id}>{sub.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                         <div>
                           <Label className="text-muted-foreground text-sm">Type</Label>
                           <Select 
@@ -1078,6 +1030,25 @@ const StaffQuestionPaper = () => {
                               {[1,2,3,4,5].map(u => (
                                 <SelectItem key={u} value={`Unit ${u}`}>Unit {u}</SelectItem>
                               ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground text-sm">Bloom's Level</Label>
+                          <Select 
+                            value={newBankQuestion.bloom_level} 
+                            onValueChange={(v) => setNewBankQuestion({...newBankQuestion, bloom_level: v})}
+                          >
+                            <SelectTrigger className="bg-muted/50 border-border/50 mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Remember">Remember</SelectItem>
+                              <SelectItem value="Understand">Understand</SelectItem>
+                              <SelectItem value="Apply">Apply</SelectItem>
+                              <SelectItem value="Analyze">Analyze</SelectItem>
+                              <SelectItem value="Evaluate">Evaluate</SelectItem>
+                              <SelectItem value="Create">Create</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -1148,7 +1119,7 @@ const StaffQuestionPaper = () => {
                 </span>
               </div>
               <span className="text-muted-foreground text-sm">
-                {questionBank.filter(q => q.isFavorite).length} favorites
+                {questionBank.filter(q => q.is_favorite).length} favorites
               </span>
             </div>
 

@@ -774,6 +774,222 @@ export type Database = {
         }
         Relationships: []
       }
+      question_bank: {
+        Row: {
+          bloom_level: string
+          correct_answer: string | null
+          created_at: string
+          created_by: string | null
+          difficulty: string
+          id: string
+          is_favorite: boolean | null
+          marks: number
+          options: Json | null
+          question: string
+          subject_id: string
+          tags: string[] | null
+          type: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          bloom_level?: string
+          correct_answer?: string | null
+          created_at?: string
+          created_by?: string | null
+          difficulty?: string
+          id?: string
+          is_favorite?: boolean | null
+          marks?: number
+          options?: Json | null
+          question: string
+          subject_id: string
+          tags?: string[] | null
+          type?: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          bloom_level?: string
+          correct_answer?: string | null
+          created_at?: string
+          created_by?: string | null
+          difficulty?: string
+          id?: string
+          is_favorite?: boolean | null
+          marks?: number
+          options?: Json | null
+          question?: string
+          subject_id?: string
+          tags?: string[] | null
+          type?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_bank_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_bank_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      question_paper_configs: {
+        Row: {
+          academic_year_id: string | null
+          bloom_distribution: Json | null
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          difficulty_mix: Json | null
+          duration: string | null
+          exam_date: string | null
+          exam_id: string | null
+          id: string
+          max_marks: number | null
+          output_format: string | null
+          paper_pattern: Json | null
+          security_options: Json | null
+          semester: number | null
+          status: string
+          subject_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          academic_year_id?: string | null
+          bloom_distribution?: Json | null
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          difficulty_mix?: Json | null
+          duration?: string | null
+          exam_date?: string | null
+          exam_id?: string | null
+          id?: string
+          max_marks?: number | null
+          output_format?: string | null
+          paper_pattern?: Json | null
+          security_options?: Json | null
+          semester?: number | null
+          status?: string
+          subject_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          academic_year_id?: string | null
+          bloom_distribution?: Json | null
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          difficulty_mix?: Json | null
+          duration?: string | null
+          exam_date?: string | null
+          exam_id?: string | null
+          id?: string
+          max_marks?: number | null
+          output_format?: string | null
+          paper_pattern?: Json | null
+          security_options?: Json | null
+          semester?: number | null
+          status?: string
+          subject_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_paper_configs_academic_year_id_fkey"
+            columns: ["academic_year_id"]
+            isOneToOne: false
+            referencedRelation: "academic_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_paper_configs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_paper_configs_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_paper_configs_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_paper_configs_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      question_paper_questions: {
+        Row: {
+          created_at: string
+          id: string
+          marks_override: number | null
+          paper_config_id: string
+          part: string | null
+          question_bank_id: string
+          question_order: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          marks_override?: number | null
+          paper_config_id: string
+          part?: string | null
+          question_bank_id: string
+          question_order?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          marks_override?: number | null
+          paper_config_id?: string
+          part?: string | null
+          question_bank_id?: string
+          question_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_paper_questions_paper_config_id_fkey"
+            columns: ["paper_config_id"]
+            isOneToOne: false
+            referencedRelation: "question_paper_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_paper_questions_question_bank_id_fkey"
+            columns: ["question_bank_id"]
+            isOneToOne: false
+            referencedRelation: "question_bank"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       question_papers: {
         Row: {
           approved_by: string | null
