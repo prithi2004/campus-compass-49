@@ -1,5 +1,6 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useAuthContext } from "@/contexts/AuthContext";
 import {
   LayoutDashboard,
   Users,
@@ -76,12 +77,19 @@ const studentMenu: MenuItem[] = [
 
 const Sidebar = ({ role }: SidebarProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuthContext();
   
   const menuItems = role === "admin" 
     ? adminMenu 
     : role === "staff" 
     ? staffMenu 
     : studentMenu;
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
   return (
     <aside className="sidebar-glass w-64 min-h-screen flex flex-col border-r border-sidebar-border">
@@ -122,13 +130,13 @@ const Sidebar = ({ role }: SidebarProps) => {
 
       {/* Logout */}
       <div className="p-4 border-t border-sidebar-border">
-        <Link
-          to="/"
-          className="menu-item text-destructive hover:bg-destructive/10"
+        <button
+          onClick={handleLogout}
+          className="menu-item text-destructive hover:bg-destructive/10 w-full"
         >
           <LogOut className="w-5 h-5" />
           <span>Logout</span>
-        </Link>
+        </button>
       </div>
     </aside>
   );
