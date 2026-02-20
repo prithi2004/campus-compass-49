@@ -28,11 +28,17 @@ const Signup = () => {
     setIsLoading(true);
     try {
       await signUp(email, password, fullName, role);
-      toast({
-        title: "Account created!",
-        description: "Please check your email to verify your account before logging in.",
-      });
-      navigate("/login");
+      // Auto-confirm is enabled, so user is logged in immediately
+      // Fetch role and redirect
+      const { data: roleData } = await (await import("@/integrations/supabase/client")).supabase
+        .from("user_roles")
+        .select("role")
+        .maybeSingle();
+      const path = roleData?.role
+        ? `/${roleData.role}/dashboard`
+        : "/login";
+      toast({ title: "Account created!", description: "Welcome to Dhaanish Connect!" });
+      navigate(path);
     } catch (error: any) {
       toast({
         title: "Signup failed",

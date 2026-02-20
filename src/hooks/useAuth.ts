@@ -60,19 +60,11 @@ export const useAuth = () => {
       email,
       password,
       options: {
-        data: { full_name: fullName },
+        data: { full_name: fullName, role: selectedRole },
         emailRedirectTo: window.location.origin,
       },
     });
     if (error) throw error;
-
-    // Assign role after signup
-    if (data.user) {
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({ user_id: data.user.id, role: selectedRole });
-      if (roleError) throw roleError;
-    }
 
     return data;
   };
