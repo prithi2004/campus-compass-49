@@ -41,6 +41,8 @@ import { useQuestionBank, useCreateBankQuestion, useToggleFavorite, type Questio
 import { useSavePaperConfig } from "@/hooks/useQuestionPaperConfig";
 import { useDepartments } from "@/hooks/useDepartments";
 import { useSubjects, useAcademicYears } from "@/hooks/useSubjects";
+import CSVUpload from "@/components/question-paper/CSVUpload";
+import { generateQuestionPaperPDF } from "@/utils/generateQuestionPaperPDF";
 
 interface Question {
   id: number;
@@ -246,6 +248,8 @@ const StaffQuestionPaper = () => {
       toast({ title: "Error", description: "Please select a subject first.", variant: "destructive" });
       return;
     }
+    
+    // Save config to database
     savePaperConfig.mutate({
       subject_id: courseName,
       title: examName || "Untitled Paper",
@@ -262,6 +266,35 @@ const StaffQuestionPaper = () => {
       output_format: outputFormat,
       status: "generated",
     });
+
+    // Generate and download PDF
+    if (questions.length === 0) {
+      toast({ title: "No questions", description: "Add questions before generating the paper.", variant: "destructive" });
+      return;
+    }
+
+    const selectedSubject = subjects.find(s => s.id === courseName);
+    const selectedDept = departments.find(d => d.id === department);
+    const selectedYear = academicYears.find(a => a.id === academicYear);
+
+    generateQuestionPaperPDF(questions, {
+      examName,
+      academicYear: selectedYear?.name || academicYear,
+      semester,
+      department: selectedDept?.name || department,
+      courseName: selectedSubject?.name || courseName,
+      subjectCode: subjectCode || selectedSubject?.code || "",
+      examDate,
+      duration,
+      maxMarks,
+      partA,
+      partB,
+      partC,
+      watermark,
+      includeAnswerKey,
+    });
+
+    toast({ title: "PDF Generated!", description: "Your question paper has been downloaded." });
   };
 
   const saveDraft = () => {
@@ -1102,6 +1135,8 @@ const StaffQuestionPaper = () => {
                     </div>
                   </DialogContent>
                 </Dialog>
+
+                <CSVUpload subjects={subjects} />
 
                 <Button onClick={addQuestion}>
                   <Plus className="w-4 h-4 mr-2" />
