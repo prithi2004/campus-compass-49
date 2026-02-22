@@ -8,17 +8,30 @@ import { Upload, FileText, AlertCircle, CheckCircle2, Download, Loader2 } from "
 import { useToast } from "@/hooks/use-toast";
 import { useCreateBankQuestion } from "@/hooks/useQuestionBank";
 import Papa from "papaparse";
+import { z } from "zod";
 
-interface CSVRow {
-  question: string;
-  type?: string;
-  unit?: string;
-  difficulty?: string;
-  bloom_level?: string;
-  marks?: string;
-  tags?: string;
-  correct_answer?: string;
-}
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_ROWS = 500;
+
+const VALID_TYPES = ["short", "long", "mcq", "true-false", "descriptive"] as const;
+const VALID_DIFFICULTIES = ["easy", "medium", "hard"] as const;
+const VALID_BLOOM_LEVELS = ["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"] as const;
+
+const csvRowSchema = z.object({
+  question: z.string().trim().min(1, "Question is required").max(1000, "Question too long (max 1000 chars)"),
+  type: z.string().trim().toLowerCase().pipe(z.enum(VALID_TYPES)).optional().default("short"),
+  unit: z.string().trim().max(50, "Unit too long").optional().default("Unit 1"),
+  difficulty: z.string().trim().toLowerCase().pipe(z.enum(VALID_DIFFICULTIES)).optional().default("medium"),
+  bloom_level: z.string().trim().pipe(z.enum(VALID_BLOOM_LEVELS)).optional().default("Understand"),
+  marks: z.string().optional().transform(v => {
+    const n = parseInt(v || "5");
+    return isNaN(n) || n < 1 || n > 100 ? 5 : n;
+  }),
+  tags: z.string().max(200, "Tags too long").optional().default(""),
+  correct_answer: z.string().max(500, "Answer too long").optional().default(""),
+});
+
+type ValidatedRow = z.infer<typeof csvRowSchema>;
 
 interface CSVUploadProps {
   subjects: { id: string; name: string; code: string }[];
@@ -27,7 +40,7 @@ interface CSVUploadProps {
 const CSVUpload = ({ subjects }: CSVUploadProps) => {
   const [open, setOpen] = useState(false);
   const [subjectId, setSubjectId] = useState("");
-  const [parsedRows, setParsedRows] = useState<CSVRow[]>([]);
+  const [parsedRows, setParsedRows] = useState<ValidatedRow[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
@@ -39,18 +52,32 @@ const CSVUpload = ({ subjects }: CSVUploadProps) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    Papa.parse<CSVRow>(file, {
+    if (file.size > MAX_FILE_SIZE) {
+      toast({ title: "File too large", description: "Maximum file size is 5MB.", variant: "destructive" });
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+
+    Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        const validRows: CSVRow[] = [];
+        const validRows: ValidatedRow[] = [];
         const errs: string[] = [];
 
-        results.data.forEach((row, idx) => {
-          if (!row.question?.trim()) {
-            errs.push(`Row ${idx + 2}: Missing question text`);
+        if (results.data.length > MAX_ROWS) {
+          errs.push(`File contains ${results.data.length} rows. Maximum allowed is ${MAX_ROWS}. Only the first ${MAX_ROWS} will be processed.`);
+        }
+
+        const rowsToProcess = results.data.slice(0, MAX_ROWS);
+
+        rowsToProcess.forEach((row: any, idx: number) => {
+          const result = csvRowSchema.safeParse(row);
+          if (!result.success) {
+            const issues = result.error.issues.map(i => i.message).join("; ");
+            errs.push(`Row ${idx + 2}: ${issues}`);
           } else {
-            validRows.push(row);
+            validRows.push(result.data);
           }
         });
 
@@ -79,15 +106,15 @@ const CSVUpload = ({ subjects }: CSVUploadProps) => {
     for (const row of parsedRows) {
       try {
         await createQuestion.mutateAsync({
-          question: row.question.trim(),
-          type: row.type?.trim() || "short",
+          question: row.question,
+          type: row.type || "short",
           subject_id: subjectId,
-          unit: row.unit?.trim() || "Unit 1",
-          difficulty: row.difficulty?.trim() || "medium",
-          bloom_level: row.bloom_level?.trim() || "Understand",
-          marks: parseInt(row.marks || "5") || 5,
+          unit: row.unit || "Unit 1",
+          difficulty: row.difficulty || "medium",
+          bloom_level: row.bloom_level || "Understand",
+          marks: typeof row.marks === "number" ? row.marks : 5,
           tags: row.tags ? row.tags.split(",").map(t => t.trim().toLowerCase()).filter(Boolean) : [],
-          correct_answer: row.correct_answer?.trim() || null,
+          correct_answer: row.correct_answer || null,
         });
         count++;
       } catch {
