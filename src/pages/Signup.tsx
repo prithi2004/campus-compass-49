@@ -5,15 +5,11 @@ import { Input } from "@/components/ui/input";
 import { GraduationCap } from "lucide-react";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import type { Database } from "@/integrations/supabase/types";
-
-type AppRole = Database["public"]["Enums"]["app_role"];
 
 const Signup = () => {
   const navigate = useNavigate();
   const { signUp } = useAuthContext();
   const { toast } = useToast();
-  const [role, setRole] = useState<AppRole>("student");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,7 +23,7 @@ const Signup = () => {
     }
     setIsLoading(true);
     try {
-      await signUp(email, password, fullName, role);
+      await signUp(email, password, fullName, "student");
       // Auto-confirm is enabled, so user is logged in immediately
       // Fetch role and redirect
       const { data: roleData } = await (await import("@/integrations/supabase/client")).supabase
@@ -61,26 +57,8 @@ const Signup = () => {
             Create Account
           </h1>
           <p className="text-muted-foreground mt-1">
-            Join Dhaanish Connect ERP
+            Join Dhaanish Connect ERP as a Student
           </p>
-        </div>
-
-        {/* Role Selection */}
-        <div className="flex justify-center gap-3 mb-6">
-          {(["admin", "staff", "student"] as AppRole[]).map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => setRole(r)}
-              className={`px-5 py-2 rounded-full text-sm font-medium transition-all capitalize ${
-                role === r
-                  ? "bg-primary text-primary-foreground shadow-lg"
-                  : "bg-muted/30 text-card-foreground border border-border hover:border-primary/50"
-              }`}
-            >
-              {r}
-            </button>
-          ))}
         </div>
 
         <form onSubmit={handleSignup} className="space-y-4">
