@@ -23,7 +23,7 @@ const Signup = () => {
     }
     setIsLoading(true);
     try {
-      await signUp(email, password, fullName, "student");
+      await signUp(email, password, fullName);
       // Auto-confirm is enabled, so user is logged in immediately
       // Fetch role and redirect
       const { data: roleData } = await (await import("@/integrations/supabase/client")).supabase

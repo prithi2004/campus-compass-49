@@ -64,14 +64,13 @@ export const useAuth = () => {
   const signUp = async (
     email: string,
     password: string,
-    fullName: string,
-    selectedRole: AppRole
+    fullName: string
   ) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName, role: selectedRole },
+        data: { full_name: fullName },
         emailRedirectTo: window.location.origin,
       },
     });
