@@ -22,6 +22,7 @@ import {
   Trophy,
   QrCode,
   UserCheck,
+  UserPlus,
 } from "lucide-react";
 
 interface MenuItem {
@@ -49,6 +50,7 @@ const adminMenu: MenuItem[] = [
   { icon: Award, label: "Exams & Results", path: "/admin/exams" },
   { icon: CreditCard, label: "Fee Management", path: "/admin/fees" },
   { icon: BarChart3, label: "Reports", path: "/admin/reports" },
+  { icon: UserPlus, label: "Invite Management", path: "/admin/invites" },
   { icon: Settings, label: "Settings", path: "/admin/settings" },
 ];
 

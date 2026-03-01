@@ -31,6 +31,7 @@ import Fees from "./pages/admin/Fees";
 import Reports from "./pages/admin/Reports";
 import Settings from "./pages/admin/Settings";
 import StatusManagement from "./pages/admin/StatusManagement";
+import InviteManagement from "./pages/admin/InviteManagement";
 
 // Staff Pages
 import StaffDashboard from "./pages/staff/Dashboard";
@@ -83,6 +84,7 @@ const App = () => (
             <Route path="/admin/fees" element={<ProtectedRoute allowedRoles={["admin"]}><Fees /></ProtectedRoute>} />
             <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={["admin"]}><Reports /></ProtectedRoute>} />
             <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={["admin"]}><Settings /></ProtectedRoute>} />
+            <Route path="/admin/invites" element={<ProtectedRoute allowedRoles={["admin"]}><InviteManagement /></ProtectedRoute>} />
             
             {/* Staff Routes */}
             <Route path="/staff/dashboard" element={<ProtectedRoute allowedRoles={["staff"]}><StaffDashboard /></ProtectedRoute>} />
