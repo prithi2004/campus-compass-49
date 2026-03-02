@@ -35,21 +35,15 @@ const Signup = () => {
     setIsLoading(true);
     try {
       const result = await signUp(email, password, fullName);
-      
-      // Wait briefly for the trigger to create the default role
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Update role to the selected one
       const userId = result.user?.id;
-      if (userId) {
-        const { error: roleError } = await supabase
+      
+      if (userId && selectedRole !== "student") {
+        // Wait for trigger to create default role, then update
+        await new Promise(resolve => setTimeout(resolve, 800));
+        await supabase
           .from("user_roles")
           .update({ role: selectedRole })
           .eq("user_id", userId);
-        
-        if (roleError) {
-          console.error("Role update error:", roleError);
-        }
       }
 
       toast({
