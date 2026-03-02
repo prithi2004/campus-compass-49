@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
-import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { GraduationCap, ShieldCheck, UserCog, Users } from "lucide-react";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -11,52 +10,21 @@ import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
-const roleConfig: Record<AppRole, { label: string; icon: React.ReactNode; color: string }> = {
-  admin: { label: "Admin", icon: <ShieldCheck className="w-4 h-4" />, color: "destructive" },
-  staff: { label: "Staff", icon: <UserCog className="w-4 h-4" />, color: "default" },
-  student: { label: "Student", icon: <Users className="w-4 h-4" />, color: "secondary" },
-};
+const roles: { value: AppRole; label: string; icon: React.ReactNode }[] = [
+  { value: "admin", label: "Admin", icon: <ShieldCheck className="w-5 h-5" /> },
+  { value: "staff", label: "Staff", icon: <UserCog className="w-5 h-5" /> },
+  { value: "student", label: "Student", icon: <Users className="w-5 h-5" /> },
+];
 
 const Signup = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { signUp } = useAuthContext();
   const { toast } = useToast();
+  const [selectedRole, setSelectedRole] = useState<AppRole>("student");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [inviteRole, setInviteRole] = useState<AppRole | null>(null);
-  const [inviteLoading, setInviteLoading] = useState(false);
-  const [inviteError, setInviteError] = useState<string | null>(null);
-
-  const token = searchParams.get("token");
-
-  useEffect(() => {
-    if (!token) return;
-    setInviteLoading(true);
-    supabase
-      .from("invitations")
-      .select("email, role, used_at, expires_at")
-      .eq("token", token)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (error || !data) {
-          setInviteError("Invalid invitation link.");
-        } else if (data.used_at) {
-          setInviteError("This invitation has already been used.");
-        } else if (new Date(data.expires_at) < new Date()) {
-          setInviteError("This invitation has expired.");
-        } else {
-          setInviteRole(data.role as AppRole);
-          setEmail(data.email);
-        }
-        setInviteLoading(false);
-      });
-  }, [token]);
-
-  const assignedRole = inviteRole || "student";
-  const rc = roleConfig[assignedRole];
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,13 +35,21 @@ const Signup = () => {
     setIsLoading(true);
     try {
       await signUp(email, password, fullName);
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .maybeSingle();
-      const path = roleData?.role ? `/${roleData.role}/dashboard` : "/login";
-      toast({ title: "Account created!", description: `Welcome to Dhaanish Connect as ${roleConfig[roleData?.role as AppRole || "student"].label}!` });
-      navigate(path);
+
+      // Update the role to the selected one
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from("user_roles")
+          .update({ role: selectedRole })
+          .eq("user_id", user.id);
+      }
+
+      toast({
+        title: "Account created!",
+        description: `Welcome to Dhaanish Connect as ${roles.find(r => r.value === selectedRole)?.label}!`,
+      });
+      navigate(`/${selectedRole}/dashboard`);
     } catch (error: any) {
       toast({ title: "Signup failed", description: error.message, variant: "destructive" });
     } finally {
@@ -81,57 +57,43 @@ const Signup = () => {
     }
   };
 
-  if (inviteLoading) {
-    return (
-      <div className="erp-gradient-bg flex items-center justify-center p-4">
-        <div className="glass-card p-8 text-center">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Verifying invitation...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (inviteError) {
-    return (
-      <div className="erp-gradient-bg flex items-center justify-center p-4">
-        <div className="glass-card w-full max-w-md p-8 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-destructive/10 mb-4">
-            <ShieldCheck className="w-8 h-8 text-destructive" />
-          </div>
-          <h1 className="text-2xl font-heading font-bold text-card-foreground mb-2">Invalid Invitation</h1>
-          <p className="text-muted-foreground mb-6">{inviteError}</p>
-          <Link to="/login">
-            <Button variant="outline">Go to Login</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="erp-gradient-bg flex items-center justify-center p-4">
       <div className="glass-card w-full max-w-md p-8 animate-fade-in">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
             <GraduationCap className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-2xl font-heading font-bold text-card-foreground">
             Create Account
           </h1>
-          <div className="flex items-center justify-center gap-2 mt-2">
-            <p className="text-muted-foreground">Joining as</p>
-            <Badge variant={rc.color as any} className="flex items-center gap-1">
-              {rc.icon}
-              {rc.label}
-            </Badge>
-          </div>
-          {!token && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Need a staff or admin account? Contact your administrator for an invite link.
-            </p>
-          )}
+          <p className="text-muted-foreground mt-1">
+            Join Dhaanish Connect ERP
+          </p>
         </div>
+
+        {/* Role Selection Tabs */}
+        <div className="grid grid-cols-3 gap-2 mb-6">
+          {roles.map((role) => (
+            <button
+              key={role.value}
+              type="button"
+              onClick={() => setSelectedRole(role.value)}
+              className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 ${
+                selectedRole === role.value
+                  ? "border-primary bg-primary/10 text-primary shadow-sm"
+                  : "border-border bg-card/50 text-muted-foreground hover:border-primary/40 hover:bg-primary/5"
+              }`}
+            >
+              {role.icon}
+              <span className="text-xs font-semibold">{role.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <p className="text-center text-sm text-muted-foreground mb-4">
+          Sign up as <span className="font-semibold text-primary capitalize">{selectedRole}</span>
+        </p>
 
         <form onSubmit={handleSignup} className="space-y-4">
           <Input
@@ -149,7 +111,6 @@ const Signup = () => {
             onChange={(e) => setEmail(e.target.value)}
             className="bg-white border-muted"
             required
-            readOnly={!!inviteRole}
           />
           <Input
             type="password"
@@ -161,7 +122,7 @@ const Signup = () => {
             minLength={6}
           />
           <Button type="submit" size="lg" className="w-full mt-6" disabled={isLoading}>
-            {isLoading ? "Creating account..." : `Sign Up as ${rc.label}`}
+            {isLoading ? "Creating account..." : `Sign Up as ${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}`}
           </Button>
         </form>
 
