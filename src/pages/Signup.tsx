@@ -34,17 +34,16 @@ const Signup = () => {
     }
     setIsLoading(true);
     try {
-      const result = await signUp(email, password, fullName);
-      const userId = result.user?.id;
-      
-      if (userId && selectedRole !== "student") {
-        // Wait for trigger to create default role, then update
-        await new Promise(resolve => setTimeout(resolve, 800));
-        await supabase
-          .from("user_roles")
-          .update({ role: selectedRole })
-          .eq("user_id", userId);
-      }
+      // Pass desired role via metadata so the DB trigger assigns it
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName, desired_role: selectedRole },
+          emailRedirectTo: window.location.origin,
+        },
+      });
+      if (error) throw error;
 
       toast({
         title: "Account created!",
