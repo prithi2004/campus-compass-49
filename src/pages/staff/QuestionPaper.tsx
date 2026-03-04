@@ -42,6 +42,7 @@ import { useSavePaperConfig } from "@/hooks/useQuestionPaperConfig";
 import { useDepartments } from "@/hooks/useDepartments";
 import { useSubjects, useAcademicYears } from "@/hooks/useSubjects";
 import CSVUpload from "@/components/question-paper/CSVUpload";
+import PDFUpload, { type ExtractedQuestion } from "@/components/question-paper/PDFUpload";
 import { generateQuestionPaperPDF } from "@/utils/generateQuestionPaperPDF";
 
 interface Question {
@@ -1137,6 +1138,19 @@ const StaffQuestionPaper = () => {
                 </Dialog>
 
                 <CSVUpload subjects={subjects} />
+
+                <PDFUpload onQuestionsExtracted={(extracted: ExtractedQuestion[]) => {
+                  const newQuestions = extracted.map((q, i) => ({
+                    id: questions.length + i + 1,
+                    text: q.question,
+                    type: q.type,
+                    marks: q.marks,
+                    unit: q.unit,
+                    difficulty: q.difficulty,
+                    bloomLevel: q.bloomLevel.toLowerCase(),
+                  }));
+                  setQuestions(prev => [...prev, ...newQuestions]);
+                }} />
 
                 <Button onClick={addQuestion}>
                   <Plus className="w-4 h-4 mr-2" />
