@@ -1,13 +1,12 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Upload, FileText, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Upload, FileText, Loader2, CheckCircle2, AlertCircle, Brain, Shuffle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import * as pdfjsLib from "pdfjs-dist";
 
-// Set worker source
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export interface ExtractedQuestion {
@@ -19,16 +18,77 @@ export interface ExtractedQuestion {
   bloomLevel: string;
 }
 
-interface PDFUploadProps {
-  onQuestionsExtracted: (questions: ExtractedQuestion[]) => void;
+interface PartConfig {
+  questions: number;
+  marks: number;
+  total: number;
 }
 
-const PDFUpload = ({ onQuestionsExtracted }: PDFUploadProps) => {
+interface PDFUploadProps {
+  onQuestionsExtracted: (questions: ExtractedQuestion[]) => void;
+  partA: PartConfig;
+  partB: PartConfig;
+  partC: PartConfig;
+  bloomDistribution: Record<string, number>;
+  difficultyMix: Record<string, number>;
+  shuffleQuestions: boolean;
+}
+
+// Taxonomy-based selection algorithm
+const selectByTaxonomy = (
+  pool: ExtractedQuestion[],
+  count: number,
+  bloomDistribution: Record<string, number>,
+  difficultyMix: Record<string, number>,
+  usedIndices: Set<number>
+): { selected: ExtractedQuestion[]; indices: number[] } => {
+  const available = pool
+    .map((q, i) => ({ q, i }))
+    .filter(({ i }) => !usedIndices.has(i));
+
+  // Score each question based on how well it matches desired distributions
+  const scored = available.map(({ q, i }) => {
+    const bloomPct = bloomDistribution[q.bloomLevel.toLowerCase()] || 0;
+    const diffPct = difficultyMix[q.difficulty.toLowerCase()] || 0;
+    // Higher score = better match to desired distribution + randomness for variety
+    const score = (bloomPct / 100) * 0.5 + (diffPct / 100) * 0.3 + Math.random() * 0.2;
+    return { q, i, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  const picked = scored.slice(0, count);
+  return {
+    selected: picked.map(p => p.q),
+    indices: picked.map(p => p.i),
+  };
+};
+
+const shuffleArray = <T,>(arr: T[]): T[] => {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
+const PDFUpload = ({
+  onQuestionsExtracted,
+  partA,
+  partB,
+  partC,
+  bloomDistribution,
+  difficultyMix,
+  shuffleQuestions,
+}: PDFUploadProps) => {
   const [open, setOpen] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [extractedQuestions, setExtractedQuestions] = useState<ExtractedQuestion[]>([]);
+  const [generatedQuestions, setGeneratedQuestions] = useState<ExtractedQuestion[]>([]);
+  const [generatedParts, setGeneratedParts] = useState<{ A: ExtractedQuestion[]; B: ExtractedQuestion[]; C: ExtractedQuestion[] }>({ A: [], B: [], C: [] });
   const [error, setError] = useState("");
   const [fileName, setFileName] = useState("");
+  const [step, setStep] = useState<"upload" | "review" | "generated">("upload");
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -36,16 +96,12 @@ const PDFUpload = ({ onQuestionsExtracted }: PDFUploadProps) => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let fullText = "";
-
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
-      const pageText = content.items
-        .map((item: any) => item.str)
-        .join(" ");
+      const pageText = content.items.map((item: any) => item.str).join(" ");
       fullText += pageText + "\n";
     }
-
     return fullText;
   };
 
@@ -57,7 +113,6 @@ const PDFUpload = ({ onQuestionsExtracted }: PDFUploadProps) => {
       toast({ title: "Invalid file", description: "Please upload a PDF file.", variant: "destructive" });
       return;
     }
-
     if (file.size > 10 * 1024 * 1024) {
       toast({ title: "File too large", description: "Maximum file size is 10MB.", variant: "destructive" });
       return;
@@ -66,17 +121,15 @@ const PDFUpload = ({ onQuestionsExtracted }: PDFUploadProps) => {
     setFileName(file.name);
     setError("");
     setExtractedQuestions([]);
+    setGeneratedQuestions([]);
     setExtracting(true);
 
     try {
-      // Extract text from PDF
       const pdfText = await extractTextFromPDF(file);
-
       if (pdfText.trim().length < 20) {
         throw new Error("Could not extract enough text from this PDF. It may be scanned/image-based.");
       }
 
-      // Send to AI for question extraction
       const { data, error: fnError } = await supabase.functions.invoke(
         "extract-questions-from-pdf",
         { body: { pdfText } }
@@ -91,7 +144,8 @@ const PDFUpload = ({ onQuestionsExtracted }: PDFUploadProps) => {
       }
 
       setExtractedQuestions(questions);
-      toast({ title: `${questions.length} questions extracted!`, description: "Review and add them to your paper." });
+      setStep("review");
+      toast({ title: `${questions.length} questions extracted!`, description: "Now generate paper based on Bloom's Taxonomy." });
     } catch (err: any) {
       setError(err.message || "Failed to extract questions");
       toast({ title: "Extraction failed", description: err.message, variant: "destructive" });
@@ -100,7 +154,88 @@ const PDFUpload = ({ onQuestionsExtracted }: PDFUploadProps) => {
     }
   };
 
-  const handleAddAll = () => {
+  const generateByTaxonomy = () => {
+    const totalNeeded = partA.questions + partB.questions + partC.questions;
+    
+    if (extractedQuestions.length < totalNeeded) {
+      setError(`Need ${totalNeeded} questions but only ${extractedQuestions.length} extracted. Add more or reduce part counts.`);
+      return;
+    }
+
+    const usedIndices = new Set<number>();
+
+    // Part A: prefer low-marks, Remember/Understand bloom levels
+    const partAPool = extractedQuestions.filter(q => q.marks <= partA.marks + 3);
+    const { selected: partASelected, indices: partAIdx } = selectByTaxonomy(
+      partAPool.length >= partA.questions ? partAPool : extractedQuestions,
+      partA.questions,
+      bloomDistribution,
+      difficultyMix,
+      usedIndices
+    );
+    // Map back to original indices
+    partAIdx.forEach(i => {
+      const origIdx = extractedQuestions.indexOf(
+        (partAPool.length >= partA.questions ? partAPool : extractedQuestions)[i]
+      );
+      if (origIdx !== -1) usedIndices.add(origIdx);
+    });
+
+    // Part B: medium marks
+    const partBPool = extractedQuestions.filter(q => q.marks > partA.marks && q.marks <= partB.marks + 5);
+    const { selected: partBSelected, indices: partBIdx } = selectByTaxonomy(
+      partBPool.length >= partB.questions ? partBPool : extractedQuestions,
+      partB.questions,
+      bloomDistribution,
+      difficultyMix,
+      usedIndices
+    );
+    partBIdx.forEach(i => {
+      const pool = partBPool.length >= partB.questions ? partBPool : extractedQuestions;
+      const origIdx = extractedQuestions.indexOf(pool[i]);
+      if (origIdx !== -1) usedIndices.add(origIdx);
+    });
+
+    // Part C: high marks
+    const partCPool = extractedQuestions.filter(q => q.marks >= partC.marks - 5);
+    const { selected: partCSelected, indices: partCIdx } = selectByTaxonomy(
+      partCPool.length >= partC.questions ? partCPool : extractedQuestions,
+      partC.questions,
+      bloomDistribution,
+      difficultyMix,
+      usedIndices
+    );
+
+    const finalA = shuffleQuestions ? shuffleArray(partASelected) : partASelected;
+    const finalB = shuffleQuestions ? shuffleArray(partBSelected) : partBSelected;
+    const finalC = shuffleQuestions ? shuffleArray(partCSelected) : partCSelected;
+
+    // Override marks to match part config
+    const withMarks = (qs: ExtractedQuestion[], marks: number) =>
+      qs.map(q => ({ ...q, marks }));
+
+    setGeneratedParts({
+      A: withMarks(finalA, partA.marks),
+      B: withMarks(finalB, partB.marks),
+      C: withMarks(finalC, partC.marks),
+    });
+    setGeneratedQuestions([
+      ...withMarks(finalA, partA.marks),
+      ...withMarks(finalB, partB.marks),
+      ...withMarks(finalC, partC.marks),
+    ]);
+    setStep("generated");
+    setError("");
+  };
+
+  const handleUseQuestions = () => {
+    onQuestionsExtracted(generatedQuestions);
+    toast({ title: "Questions added", description: `${generatedQuestions.length} taxonomy-based questions added to your paper.` });
+    setOpen(false);
+    reset();
+  };
+
+  const handleAddAllRaw = () => {
     onQuestionsExtracted(extractedQuestions);
     toast({ title: "Questions added", description: `${extractedQuestions.length} questions added to your paper.` });
     setOpen(false);
@@ -109,8 +244,11 @@ const PDFUpload = ({ onQuestionsExtracted }: PDFUploadProps) => {
 
   const reset = () => {
     setExtractedQuestions([]);
+    setGeneratedQuestions([]);
+    setGeneratedParts({ A: [], B: [], C: [] });
     setError("");
     setFileName("");
+    setStep("upload");
     if (fileRef.current) fileRef.current.value = "";
   };
 
@@ -121,6 +259,15 @@ const PDFUpload = ({ onQuestionsExtracted }: PDFUploadProps) => {
       hard: "bg-red-500/20 text-red-400 border-red-500/30",
     };
     return colors[d] || "";
+  };
+
+  const bloomStats = (qs: ExtractedQuestion[]) => {
+    const counts: Record<string, number> = {};
+    qs.forEach(q => {
+      const level = q.bloomLevel.toLowerCase();
+      counts[level] = (counts[level] || 0) + 1;
+    });
+    return counts;
   };
 
   return (
@@ -135,27 +282,33 @@ const PDFUpload = ({ onQuestionsExtracted }: PDFUploadProps) => {
         <DialogHeader>
           <DialogTitle className="text-card-foreground flex items-center gap-2">
             <FileText className="w-5 h-5 text-primary" />
-            Extract Questions from PDF
+            {step === "upload" && "Extract Questions from PDF"}
+            {step === "review" && "Review Extracted Questions"}
+            {step === "generated" && "Taxonomy-Based Paper Generated"}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 mt-4 flex-1 overflow-hidden flex flex-col">
           {/* Info */}
           <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm text-card-foreground">
-            Upload a question paper PDF. AI will extract individual questions with marks, difficulty, and Bloom's level.
+            {step === "upload" && "Upload a question paper PDF. AI will extract questions with Bloom's levels, then generate a paper matching your taxonomy distribution."}
+            {step === "review" && `${extractedQuestions.length} questions extracted. Click "Generate by Taxonomy" to auto-select based on your Bloom's & difficulty settings.`}
+            {step === "generated" && "Questions selected based on your Bloom's Taxonomy and difficulty distribution settings."}
           </div>
 
-          {/* File input */}
-          <div>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".pdf"
-              onChange={handleFileChange}
-              disabled={extracting}
-              className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer disabled:opacity-50"
-            />
-          </div>
+          {/* File input - always visible */}
+          {step === "upload" && (
+            <div>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".pdf"
+                onChange={handleFileChange}
+                disabled={extracting}
+                className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer disabled:opacity-50"
+              />
+            </div>
+          )}
 
           {/* Loading */}
           {extracting && (
@@ -163,7 +316,7 @@ const PDFUpload = ({ onQuestionsExtracted }: PDFUploadProps) => {
               <Loader2 className="w-5 h-5 animate-spin text-primary" />
               <div>
                 <p className="text-card-foreground font-medium">Extracting questions from {fileName}...</p>
-                <p className="text-sm text-muted-foreground">AI is reading and parsing the PDF</p>
+                <p className="text-sm text-muted-foreground">AI is reading and classifying by Bloom's Taxonomy</p>
               </div>
             </div>
           )}
@@ -176,29 +329,48 @@ const PDFUpload = ({ onQuestionsExtracted }: PDFUploadProps) => {
             </div>
           )}
 
-          {/* Results */}
-          {extractedQuestions.length > 0 && (
+          {/* Review extracted questions */}
+          {step === "review" && (
             <>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                <span className="text-card-foreground font-medium">
-                  {extractedQuestions.length} questions extracted
-                </span>
+              {/* Bloom's distribution summary */}
+              <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+                <p className="text-xs text-muted-foreground mb-2 font-medium">Extracted Bloom's Distribution:</p>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(bloomStats(extractedQuestions)).map(([level, count]) => (
+                    <Badge key={level} variant="outline" className="capitalize text-xs">
+                      {level}: {count}
+                    </Badge>
+                  ))}
+                </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+              {/* Config summary */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="p-2 rounded-lg bg-muted/20 border border-border/30 text-center">
+                  <p className="text-xs text-muted-foreground">Part A</p>
+                  <p className="font-bold text-sm text-card-foreground">{partA.questions} × {partA.marks}m</p>
+                </div>
+                <div className="p-2 rounded-lg bg-muted/20 border border-border/30 text-center">
+                  <p className="text-xs text-muted-foreground">Part B</p>
+                  <p className="font-bold text-sm text-card-foreground">{partB.questions} × {partB.marks}m</p>
+                </div>
+                <div className="p-2 rounded-lg bg-muted/20 border border-border/30 text-center">
+                  <p className="text-xs text-muted-foreground">Part C</p>
+                  <p className="font-bold text-sm text-card-foreground">{partC.questions} × {partC.marks}m</p>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-2 pr-2">
                 {extractedQuestions.map((q, i) => (
                   <div key={i} className="p-3 rounded-lg bg-muted/30 border border-border/50">
                     <p className="text-card-foreground text-sm mb-2">
                       <span className="font-medium text-primary">{i + 1}.</span> {q.question}
                     </p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       <Badge variant="outline" className="capitalize text-xs">{q.type}</Badge>
-                      <Badge variant="outline" className={`text-xs ${getDifficultyColor(q.difficulty)}`}>
-                        {q.difficulty}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">{q.marks} marks</Badge>
-                      <Badge variant="outline" className="text-xs text-muted-foreground">{q.bloomLevel}</Badge>
+                      <Badge variant="outline" className={`text-xs ${getDifficultyColor(q.difficulty)}`}>{q.difficulty}</Badge>
+                      <Badge variant="outline" className="text-xs">{q.marks}m</Badge>
+                      <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">{q.bloomLevel}</Badge>
                       <Badge variant="outline" className="text-xs text-muted-foreground">{q.unit}</Badge>
                     </div>
                   </div>
@@ -207,16 +379,81 @@ const PDFUpload = ({ onQuestionsExtracted }: PDFUploadProps) => {
             </>
           )}
 
+          {/* Generated taxonomy-based paper */}
+          {step === "generated" && (
+            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+              {(["A", "B", "C"] as const).map((part) => {
+                const partConfig = part === "A" ? partA : part === "B" ? partB : partC;
+                const partQs = generatedParts[part];
+                if (partQs.length === 0) return null;
+                return (
+                  <div key={part}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="font-semibold text-card-foreground text-sm">
+                        Part {part} ({partConfig.marks} marks each)
+                      </h4>
+                      <Badge variant="outline" className="text-xs">{partQs.length} questions</Badge>
+                    </div>
+                    <div className="space-y-2">
+                      {partQs.map((q, i) => (
+                        <div key={i} className="p-3 rounded-lg bg-muted/20 border border-border/30">
+                          <p className="text-card-foreground text-sm mb-1.5">
+                            <span className="font-medium text-primary">Q{i + 1}.</span> {q.question}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            <Badge variant="outline" className={`text-xs ${getDifficultyColor(q.difficulty)}`}>{q.difficulty}</Badge>
+                            <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">{q.bloomLevel}</Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Bloom's stats of generated paper */}
+              <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+                <p className="text-xs text-muted-foreground mb-2 font-medium">Generated Paper Bloom's Distribution:</p>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(bloomStats(generatedQuestions)).map(([level, count]) => (
+                    <Badge key={level} variant="outline" className="capitalize text-xs">
+                      {level}: {count} ({Math.round((count / generatedQuestions.length) * 100)}%)
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-2 border-t border-border/50">
             <Button variant="outline" onClick={() => { setOpen(false); reset(); }}>
               Cancel
             </Button>
-            {extractedQuestions.length > 0 && (
-              <Button onClick={handleAddAll}>
-                <CheckCircle2 className="w-4 h-4 mr-2" />
-                Add All {extractedQuestions.length} Questions
-              </Button>
+
+            {step === "review" && (
+              <>
+                <Button variant="outline" onClick={handleAddAllRaw}>
+                  Add All Raw
+                </Button>
+                <Button onClick={generateByTaxonomy}>
+                  <Brain className="w-4 h-4 mr-2" />
+                  Generate by Taxonomy
+                </Button>
+              </>
+            )}
+
+            {step === "generated" && (
+              <>
+                <Button variant="outline" onClick={generateByTaxonomy}>
+                  <Shuffle className="w-4 h-4 mr-2" />
+                  Regenerate
+                </Button>
+                <Button onClick={handleUseQuestions}>
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Use These Questions
+                </Button>
+              </>
             )}
           </div>
         </div>

@@ -1174,18 +1174,26 @@ const StaffQuestionPaper = () => {
 
                 <CSVUpload subjects={subjects} />
 
-                <PDFUpload onQuestionsExtracted={(extracted: ExtractedQuestion[]) => {
-                  const newQuestions = extracted.map((q, i) => ({
-                    id: questions.length + i + 1,
-                    text: q.question,
-                    type: q.type,
-                    marks: q.marks,
-                    unit: q.unit,
-                    difficulty: q.difficulty,
-                    bloomLevel: q.bloomLevel.toLowerCase(),
-                  }));
-                  setQuestions(prev => [...prev, ...newQuestions]);
-                }} />
+                <PDFUpload
+                  partA={partA}
+                  partB={partB}
+                  partC={partC}
+                  bloomDistribution={bloomDistribution}
+                  difficultyMix={difficultyMix}
+                  shuffleQuestions={shuffleQuestions}
+                  onQuestionsExtracted={(extracted: ExtractedQuestion[]) => {
+                    const newQuestions = extracted.map((q, i) => ({
+                      id: questions.length + i + 1,
+                      text: q.question,
+                      type: q.type,
+                      marks: q.marks,
+                      unit: q.unit,
+                      difficulty: q.difficulty,
+                      bloomLevel: q.bloomLevel.toLowerCase(),
+                    }));
+                    setQuestions(prev => [...prev, ...newQuestions]);
+                  }}
+                />
 
                 <AutoGenerateButton
                   questionBank={questionBank}
