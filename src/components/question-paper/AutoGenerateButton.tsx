@@ -1,0 +1,382 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Brain, Loader2, AlertCircle, CheckCircle2, Shuffle } from "lucide-react";
+import { type QuestionBankItem } from "@/hooks/useQuestionBank";
+
+interface Question {
+  id: number;
+  text: string;
+  type: string;
+  marks: number;
+  unit: string;
+  difficulty: string;
+  bloomLevel: string;
+}
+
+interface PartConfig {
+  questions: number;
+  marks: number;
+  total: number;
+}
+
+interface AutoGenerateProps {
+  questionBank: QuestionBankItem[];
+  subjectId: string;
+  partA: PartConfig;
+  partB: PartConfig;
+  partC: PartConfig;
+  bloomDistribution: Record<string, number>;
+  difficultyMix: Record<string, number>;
+  shuffleQuestions: boolean;
+  onGenerated: (questions: Question[]) => void;
+}
+
+interface ValidationError {
+  type: "error" | "warning";
+  message: string;
+}
+
+const AutoGenerateButton = ({
+  questionBank,
+  subjectId,
+  partA,
+  partB,
+  partC,
+  bloomDistribution,
+  difficultyMix,
+  shuffleQuestions,
+  onGenerated,
+}: AutoGenerateProps) => {
+  const [open, setOpen] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [errors, setErrors] = useState<ValidationError[]>([]);
+  const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
+
+  const subjectQuestions = questionBank.filter(q => q.subject_id === subjectId);
+
+  const validate = (): ValidationError[] => {
+    const errs: ValidationError[] = [];
+    const totalNeeded = partA.questions + partB.questions + partC.questions;
+
+    if (!subjectId) {
+      errs.push({ type: "error", message: "Please select a subject in Step 1 first." });
+      return errs;
+    }
+
+    if (subjectQuestions.length === 0) {
+      errs.push({ type: "error", message: "No questions found in the bank for the selected subject." });
+      return errs;
+    }
+
+    if (subjectQuestions.length < totalNeeded) {
+      errs.push({
+        type: "error",
+        message: `Need ${totalNeeded} questions but only ${subjectQuestions.length} available for this subject.`,
+      });
+    }
+
+    // Check Part A availability (low marks questions)
+    const partAPool = subjectQuestions.filter(q => q.marks <= partA.marks);
+    if (partAPool.length < partA.questions) {
+      errs.push({
+        type: "warning",
+        message: `Part A needs ${partA.questions} questions (≤${partA.marks} marks), only ${partAPool.length} available.`,
+      });
+    }
+
+    // Check Part C availability (high marks questions)
+    const partCPool = subjectQuestions.filter(q => q.marks >= partC.marks);
+    if (partCPool.length < partC.questions) {
+      errs.push({
+        type: "warning",
+        message: `Part C needs ${partC.questions} questions (≥${partC.marks} marks), only ${partCPool.length} available.`,
+      });
+    }
+
+    // Check Bloom's distribution
+    const bloomLevels = ["remember", "understand", "apply", "analyze", "evaluate", "create"];
+    for (const level of bloomLevels) {
+      const pct = bloomDistribution[level] || 0;
+      if (pct > 0) {
+        const needed = Math.ceil((pct / 100) * totalNeeded);
+        const available = subjectQuestions.filter(q => q.bloom_level.toLowerCase() === level).length;
+        if (available < needed) {
+          errs.push({
+            type: "warning",
+            message: `Bloom's "${level}": need ~${needed} questions (${pct}%), only ${available} available.`,
+          });
+        }
+      }
+    }
+
+    // Check difficulty distribution
+    for (const diff of ["easy", "medium", "hard"]) {
+      const pct = difficultyMix[diff] || 0;
+      if (pct > 0) {
+        const needed = Math.ceil((pct / 100) * totalNeeded);
+        const available = subjectQuestions.filter(q => q.difficulty === diff).length;
+        if (available < needed) {
+          errs.push({
+            type: "warning",
+            message: `Difficulty "${diff}": need ~${needed} questions (${pct}%), only ${available} available.`,
+          });
+        }
+      }
+    }
+
+    return errs;
+  };
+
+  const shuffleArray = <T,>(arr: T[]): T[] => {
+    const shuffled = [...arr];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  const selectQuestions = (
+    pool: QuestionBankItem[],
+    count: number,
+    usedIds: Set<string>
+  ): QuestionBankItem[] => {
+    const totalNeeded = partA.questions + partB.questions + partC.questions;
+    const available = pool.filter(q => !usedIds.has(q.id));
+
+    // Weight by bloom and difficulty distribution
+    const scored = available.map(q => {
+      const bloomPct = bloomDistribution[q.bloom_level.toLowerCase()] || 0;
+      const diffPct = difficultyMix[q.difficulty] || 0;
+      const score = (bloomPct / 100) * (diffPct / 100) + Math.random() * 0.3;
+      return { q, score };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, count).map(s => s.q);
+  };
+
+  const generate = () => {
+    setGenerating(true);
+    const validationErrors = validate();
+    setErrors(validationErrors);
+
+    const hasBlockingError = validationErrors.some(e => e.type === "error");
+    if (hasBlockingError) {
+      setGenerating(false);
+      return;
+    }
+
+    setTimeout(() => {
+      const usedIds = new Set<string>();
+      const result: Question[] = [];
+      let qNum = 1;
+
+      // Part A - short/low marks questions
+      const partAPool = subjectQuestions.filter(q => q.marks <= partA.marks + 2);
+      const partASelected = selectQuestions(
+        partAPool.length >= partA.questions ? partAPool : subjectQuestions,
+        partA.questions,
+        usedIds
+      );
+      for (const q of partASelected) {
+        usedIds.add(q.id);
+        result.push({
+          id: qNum++,
+          text: q.question,
+          type: q.type,
+          marks: partA.marks,
+          unit: q.unit,
+          difficulty: q.difficulty,
+          bloomLevel: q.bloom_level.toLowerCase(),
+        });
+      }
+
+      // Part B - medium marks questions
+      const partBPool = subjectQuestions.filter(
+        q => q.marks > partA.marks && q.marks <= partB.marks + 5
+      );
+      const partBSelected = selectQuestions(
+        partBPool.length >= partB.questions ? partBPool : subjectQuestions,
+        partB.questions,
+        usedIds
+      );
+      for (const q of partBSelected) {
+        usedIds.add(q.id);
+        result.push({
+          id: qNum++,
+          text: q.question,
+          type: q.type,
+          marks: partB.marks,
+          unit: q.unit,
+          difficulty: q.difficulty,
+          bloomLevel: q.bloom_level.toLowerCase(),
+        });
+      }
+
+      // Part C - high marks questions
+      const partCPool = subjectQuestions.filter(q => q.marks >= partC.marks - 5);
+      const partCSelected = selectQuestions(
+        partCPool.length >= partC.questions ? partCPool : subjectQuestions,
+        partC.questions,
+        usedIds
+      );
+      for (const q of partCSelected) {
+        usedIds.add(q.id);
+        result.push({
+          id: qNum++,
+          text: q.question,
+          type: q.type,
+          marks: partC.marks,
+          unit: q.unit,
+          difficulty: q.difficulty,
+          bloomLevel: q.bloom_level.toLowerCase(),
+        });
+      }
+
+      const finalResult = shuffleQuestions
+        ? [
+            ...shuffleArray(result.filter(q => q.marks === partA.marks)).map((q, i) => ({ ...q, id: i + 1 })),
+            ...shuffleArray(result.filter(q => q.marks === partB.marks)).map((q, i) => ({ ...q, id: partA.questions + i + 1 })),
+            ...shuffleArray(result.filter(q => q.marks === partC.marks)).map((q, i) => ({ ...q, id: partA.questions + partB.questions + i + 1 })),
+          ]
+        : result;
+
+      setGeneratedQuestions(finalResult);
+      setGenerating(false);
+    }, 800);
+  };
+
+  const confirmGenerate = () => {
+    onGenerated(generatedQuestions);
+    setOpen(false);
+    setGeneratedQuestions([]);
+    setErrors([]);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setGeneratedQuestions([]); setErrors([]); } }}>
+      <DialogTrigger asChild>
+        <Button variant="default" className="bg-gradient-to-r from-primary to-primary/80">
+          <Brain className="w-4 h-4 mr-2" />
+          Auto Generate
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="glass-card border-border/50 max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-card-foreground flex items-center gap-2">
+            <Brain className="w-5 h-5 text-primary" />
+            Auto Generate Question Paper
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 mt-4">
+          {/* Config summary */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="p-3 rounded-lg bg-muted/30 border border-border/50 text-center">
+              <p className="text-xs text-muted-foreground">Part A</p>
+              <p className="font-bold text-card-foreground">{partA.questions} × {partA.marks}m</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/30 border border-border/50 text-center">
+              <p className="text-xs text-muted-foreground">Part B</p>
+              <p className="font-bold text-card-foreground">{partB.questions} × {partB.marks}m</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/30 border border-border/50 text-center">
+              <p className="text-xs text-muted-foreground">Part C</p>
+              <p className="font-bold text-card-foreground">{partC.questions} × {partC.marks}m</p>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+            <p className="text-sm text-muted-foreground">
+              Available: <strong className="text-card-foreground">{subjectQuestions.length}</strong> questions for selected subject |
+              Needed: <strong className="text-card-foreground">{partA.questions + partB.questions + partC.questions}</strong> total
+            </p>
+          </div>
+
+          {/* Validation errors */}
+          {errors.length > 0 && (
+            <div className="space-y-2">
+              {errors.map((e, i) => (
+                <div
+                  key={i}
+                  className={`p-3 rounded-lg flex items-start gap-2 text-sm ${
+                    e.type === "error"
+                      ? "bg-destructive/10 border border-destructive/20 text-destructive"
+                      : "bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 dark:text-yellow-400"
+                  }`}
+                >
+                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                  {e.message}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Generated questions preview */}
+          {generatedQuestions.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                <span className="font-medium text-card-foreground">
+                  {generatedQuestions.length} questions generated
+                </span>
+              </div>
+
+              <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                {generatedQuestions.map((q, i) => (
+                  <div key={i} className="p-3 rounded-lg bg-muted/20 border border-border/30">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm text-card-foreground">
+                        <span className="font-medium text-primary">Q{q.id}.</span> {q.text}
+                      </p>
+                      <div className="flex gap-1 shrink-0">
+                        <Badge variant="outline" className="text-xs">{q.marks}m</Badge>
+                        <Badge variant="outline" className="text-xs capitalize">{q.bloomLevel}</Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            {generatedQuestions.length === 0 ? (
+              <Button onClick={generate} disabled={generating}>
+                {generating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="w-4 h-4 mr-2" />
+                    Generate Questions
+                  </>
+                )}
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={generate}>
+                  <Shuffle className="w-4 h-4 mr-2" />
+                  Regenerate
+                </Button>
+                <Button onClick={confirmGenerate}>
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Use These Questions
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default AutoGenerateButton;

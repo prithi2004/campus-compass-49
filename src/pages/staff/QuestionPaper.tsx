@@ -43,6 +43,9 @@ import { useDepartments } from "@/hooks/useDepartments";
 import { useSubjects, useAcademicYears } from "@/hooks/useSubjects";
 import CSVUpload from "@/components/question-paper/CSVUpload";
 import PDFUpload, { type ExtractedQuestion } from "@/components/question-paper/PDFUpload";
+import AutoGenerateButton from "@/components/question-paper/AutoGenerateButton";
+import PaperPreview from "@/components/question-paper/PaperPreview";
+import PaperHistory from "@/components/question-paper/PaperHistory";
 import { generateQuestionPaperPDF } from "@/utils/generateQuestionPaperPDF";
 
 interface Question {
@@ -88,6 +91,7 @@ const StaffQuestionPaper = () => {
   const [newTag, setNewTag] = useState("");
   
   // Basic Details
+  const [collegeName, setCollegeName] = useState("DHAANISH AHMED COLLEGE OF ENGINEERING");
   const [examName, setExamName] = useState("");
   const [academicYear, setAcademicYear] = useState("");
   const [semester, setSemester] = useState("");
@@ -137,6 +141,14 @@ const StaffQuestionPaper = () => {
     "Unit 4: Trees and Graphs",
     "Unit 5: Sorting and Searching",
   ];
+
+  // Computed names for display
+  const selectedSubject = subjects.find(s => s.id === courseName);
+  const selectedDept = departments.find(d => d.id === department);
+  const selectedYear = academicYears.find(a => a.id === academicYear);
+  const selectedSubjectName = selectedSubject?.name || "";
+  const selectedDeptName = selectedDept?.name || "";
+  const selectedYearName = selectedYear?.name || "";
 
   // Filter question bank
   const filteredBankQuestions = questionBank.filter(q => {
@@ -274,16 +286,12 @@ const StaffQuestionPaper = () => {
       return;
     }
 
-    const selectedSubject = subjects.find(s => s.id === courseName);
-    const selectedDept = departments.find(d => d.id === department);
-    const selectedYear = academicYears.find(a => a.id === academicYear);
-
     generateQuestionPaperPDF(questions, {
       examName,
-      academicYear: selectedYear?.name || academicYear,
+      academicYear: selectedYearName,
       semester,
-      department: selectedDept?.name || department,
-      courseName: selectedSubject?.name || courseName,
+      department: selectedDeptName,
+      courseName: selectedSubjectName,
       subjectCode: subjectCode || selectedSubject?.code || "",
       examDate,
       duration,
@@ -338,7 +346,25 @@ const StaffQuestionPaper = () => {
           <h2 className="text-2xl font-heading font-bold text-foreground">Generate Question Paper</h2>
           <p className="text-muted-foreground">Create comprehensive question papers with advanced options</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
+          <PaperHistory subjects={subjects} departments={departments} />
+          <PaperPreview
+            collegeName={collegeName}
+            examName={examName}
+            department={selectedDeptName}
+            subjectName={selectedSubjectName}
+            subjectCode={subjectCode}
+            duration={duration}
+            maxMarks={maxMarks}
+            examDate={examDate}
+            semester={semester}
+            academicYear={selectedYearName}
+            questions={questions}
+            partA={partA}
+            partB={partB}
+            partC={partC}
+            watermark={watermark}
+          />
           <Button variant="outline" onClick={saveDraft}>
             <Save className="w-4 h-4 mr-2" />
             Save Draft
@@ -392,6 +418,15 @@ const StaffQuestionPaper = () => {
               Basic Exam Details
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-2 lg:col-span-3">
+                <Label className="text-card-foreground">College Name *</Label>
+                <Input
+                  value={collegeName}
+                  onChange={(e) => setCollegeName(e.target.value)}
+                  placeholder="Enter college name"
+                  className="bg-muted/50 border-border/50"
+                />
+              </div>
               <div className="space-y-2">
                 <Label className="text-card-foreground">Exam Name *</Label>
                 <Select value={examName} onValueChange={setExamName}>
@@ -1152,6 +1187,18 @@ const StaffQuestionPaper = () => {
                   setQuestions(prev => [...prev, ...newQuestions]);
                 }} />
 
+                <AutoGenerateButton
+                  questionBank={questionBank}
+                  subjectId={courseName}
+                  partA={partA}
+                  partB={partB}
+                  partC={partC}
+                  bloomDistribution={bloomDistribution}
+                  difficultyMix={difficultyMix}
+                  shuffleQuestions={shuffleQuestions}
+                  onGenerated={(generated) => setQuestions(generated)}
+                />
+
                 <Button onClick={addQuestion}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add New
@@ -1325,13 +1372,28 @@ const StaffQuestionPaper = () => {
 
             {/* Preview & Generate */}
             <div className="flex gap-4 pt-4 border-t border-border/50">
-              <Button variant="outline" className="flex-1">
-                <Eye className="w-4 h-4 mr-2" />
-                Preview Paper
-              </Button>
+              <div className="flex-1">
+                <PaperPreview
+                  collegeName={collegeName}
+                  examName={examName}
+                  department={selectedDeptName}
+                  subjectName={selectedSubjectName}
+                  subjectCode={subjectCode}
+                  duration={duration}
+                  maxMarks={maxMarks}
+                  examDate={examDate}
+                  semester={semester}
+                  academicYear={selectedYearName}
+                  questions={questions}
+                  partA={partA}
+                  partB={partB}
+                  partC={partC}
+                  watermark={watermark}
+                />
+              </div>
               <Button className="flex-1" onClick={generatePaper}>
                 <FileDown className="w-4 h-4 mr-2" />
-                Generate & Download
+                Generate &amp; Download
               </Button>
             </div>
           </div>
