@@ -1,6 +1,8 @@
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import SyllabusCoverage from "@/components/syllabus/SyllabusCoverage";
 import {
   BookOpen,
   Users,
@@ -10,6 +12,7 @@ import {
   Calendar,
   CheckCircle2,
   ArrowRight,
+  BarChart3,
 } from "lucide-react";
 
 const subjectsData = [
