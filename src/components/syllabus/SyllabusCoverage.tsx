@@ -207,7 +207,7 @@ const SyllabusCoverage = () => {
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           {pct === 100 ? (
-                            <CheckCircle2 className="w-5 h-5 text-green-500" />
+                            <CheckCircle2 className="w-5 h-5 text-primary" />
                           ) : (
                             <Circle className="w-5 h-5 text-muted-foreground" />
                           )}
