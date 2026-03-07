@@ -1577,6 +1577,60 @@ export type Database = {
           },
         ]
       }
+      syllabus_coverage: {
+        Row: {
+          completed_topics: number
+          created_at: string
+          id: string
+          notes: string | null
+          staff_id: string | null
+          subject_id: string
+          total_topics: number
+          unit_name: string
+          unit_number: number
+          updated_at: string
+        }
+        Insert: {
+          completed_topics?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          staff_id?: string | null
+          subject_id: string
+          total_topics?: number
+          unit_name: string
+          unit_number?: number
+          updated_at?: string
+        }
+        Update: {
+          completed_topics?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          staff_id?: string | null
+          subject_id?: string
+          total_topics?: number
+          unit_name?: string
+          unit_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syllabus_coverage_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "syllabus_coverage_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       time_slots: {
         Row: {
           created_at: string
