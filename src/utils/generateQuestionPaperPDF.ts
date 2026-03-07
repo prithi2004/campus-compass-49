@@ -133,9 +133,10 @@ export const generateQuestionPaperPDF = (
   y += 5;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.text("1. Answer all questions in Part A.", leftX, y); y += 4;
-  doc.text("2. Answer any required number of questions from Part B and Part C.", leftX, y); y += 4;
-  doc.text("3. Draw neat diagrams wherever necessary.", leftX, y); y += 8;
+  doc.text(`1. Answer all questions in Part A. (${config.partA.questions} × ${config.partA.marks} = ${config.partA.total} marks)`, leftX, y); y += 4;
+  doc.text(`2. Answer any ${config.partB.questions} questions from Part B. (${config.partB.questions} × ${config.partB.marks} = ${config.partB.total} marks)`, leftX, y); y += 4;
+  doc.text(`3. Answer any ${config.partC.questions} questions from Part C. (${config.partC.questions} × ${config.partC.marks} = ${config.partC.total} marks)`, leftX, y); y += 4;
+  doc.text("4. Draw neat diagrams wherever necessary.", leftX, y); y += 8;
 
   // Separator
   doc.line(15, y, pageWidth - 15, y);
@@ -146,40 +147,86 @@ export const generateQuestionPaperPDF = (
   const partBQuestions = questions.filter(q => q.marks > config.partA.marks && q.marks <= config.partB.marks);
   const partCQuestions = questions.filter(q => q.marks > config.partB.marks);
 
-  // If no grouping works, just list all questions sequentially
   const hasGrouping = partAQuestions.length > 0 || partBQuestions.length > 0 || partCQuestions.length > 0;
 
-  const renderQuestions = (qs: Question[], partLabel: string, partDesc: string, startNum: number) => {
+  // Render Part A - answer all, simple numbered list
+  const renderPartA = (qs: Question[], startNum: number) => {
     if (qs.length === 0) return startNum;
-
     checkPage(15);
-    centerText(`${partLabel} - ${partDesc}`, y, 12, true);
+    centerText(`PART A - Answer all questions (${config.partA.marks} marks each)`, y, 12, true);
     y += 8;
 
     qs.forEach((q, idx) => {
       const qNum = startNum + idx;
       const lines = doc.splitTextToSize(`${qNum}. ${q.text}`, pageWidth - 50);
       checkPage(lines.length * 5 + 8);
-
       doc.setFontSize(11);
       doc.setFont("helvetica", "normal");
       doc.text(lines, leftX, y);
-      
-      // Marks on the right
       doc.setFontSize(9);
       doc.text(`[${q.marks} marks]`, pageWidth - 35, y);
       y += lines.length * 5 + 4;
     });
-
     y += 4;
     return startNum + qs.length;
   };
 
+  // Render Part B/C - paired as "a) or b)" either/or choices
+  const renderPartWithChoices = (qs: Question[], partLabel: string, answerCount: number, marksEach: number, startNum: number) => {
+    if (qs.length === 0) return startNum;
+    checkPage(15);
+    centerText(`${partLabel} - Answer any ${answerCount} questions (${marksEach} marks each)`, y, 12, true);
+    y += 8;
+
+    let qNum = startNum;
+    for (let i = 0; i < qs.length; i += 2) {
+      checkPage(25);
+
+      // Question number header
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text(`${qNum}.`, leftX, y);
+      y += 1;
+
+      // Option (a)
+      const qA = qs[i];
+      const linesA = doc.splitTextToSize(`(a) ${qA.text}`, pageWidth - 55);
+      checkPage(linesA.length * 5 + 8);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.text(linesA, leftX + 8, y);
+      doc.setFontSize(9);
+      doc.text(`[${marksEach} marks]`, pageWidth - 35, y);
+      y += linesA.length * 5 + 3;
+
+      // Option (b) if available
+      if (i + 1 < qs.length) {
+        centerText("(OR)", y, 9, true);
+        y += 5;
+
+        const qB = qs[i + 1];
+        const linesB = doc.splitTextToSize(`(b) ${qB.text}`, pageWidth - 55);
+        checkPage(linesB.length * 5 + 8);
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        doc.text(linesB, leftX + 8, y);
+        doc.setFontSize(9);
+        doc.text(`[${marksEach} marks]`, pageWidth - 35, y);
+        y += linesB.length * 5 + 3;
+      }
+
+      y += 4;
+      qNum++;
+    }
+    y += 4;
+    return qNum;
+  };
+
   if (hasGrouping && (partAQuestions.length + partBQuestions.length + partCQuestions.length) === questions.length) {
     let num = 1;
-    num = renderQuestions(partAQuestions, "PART A", `Answer all questions (${config.partA.marks} marks each)`, num);
-    num = renderQuestions(partBQuestions, "PART B", `Answer any ${config.partB.questions} questions (${config.partB.marks} marks each)`, num);
-    renderQuestions(partCQuestions, "PART C", `Answer any ${config.partC.questions} questions (${config.partC.marks} marks each)`, num);
+    num = renderPartA(partAQuestions, num);
+    num = renderPartWithChoices(partBQuestions, "PART B", config.partB.questions, config.partB.marks, num);
+    renderPartWithChoices(partCQuestions, "PART C", config.partC.questions, config.partC.marks, num);
   } else {
     // Render all questions flat
     questions.forEach((q, idx) => {
