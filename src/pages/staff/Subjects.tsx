@@ -1,6 +1,8 @@
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import SyllabusCoverage from "@/components/syllabus/SyllabusCoverage";
 import {
   BookOpen,
   Users,
@@ -10,6 +12,7 @@ import {
   Calendar,
   CheckCircle2,
   ArrowRight,
+  BarChart3,
 } from "lucide-react";
 
 const subjectsData = [
@@ -89,104 +92,119 @@ const StaffSubjects = () => {
         </Button>
       </div>
 
-      {/* Subjects Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {subjectsData.map((subject) => (
-          <div key={subject.id} className="glass-card p-6 hover:bg-card/80 transition-colors">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-medium text-primary">{subject.code}</span>
-                  <span className="badge badge-outline">{subject.batch}</span>
+      <Tabs defaultValue="subjects" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="subjects">
+            <BookOpen className="w-4 h-4 mr-2" />
+            My Subjects
+          </TabsTrigger>
+          <TabsTrigger value="syllabus">
+            <BarChart3 className="w-4 h-4 mr-2" />
+            Syllabus Coverage
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="subjects">
+          {/* Subjects Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {subjectsData.map((subject) => (
+              <div key={subject.id} className="glass-card p-6 hover:bg-card/80 transition-colors">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-medium text-primary">{subject.code}</span>
+                      <span className="badge badge-outline">{subject.batch}</span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-card-foreground">{subject.name}</h3>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-primary" />
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold text-card-foreground">{subject.name}</h3>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-primary" />
-              </div>
-            </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="text-center p-3 rounded-lg bg-muted/30">
-                <Users className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
-                <p className="text-lg font-semibold text-card-foreground">{subject.students}</p>
-                <p className="text-xs text-muted-foreground">Students</p>
-              </div>
-              <div className="text-center p-3 rounded-lg bg-muted/30">
-                <Clock className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
-                <p className="text-lg font-semibold text-card-foreground">{subject.classesHeld}/{subject.totalClasses}</p>
-                <p className="text-xs text-muted-foreground">Classes</p>
-              </div>
-              <div className="text-center p-3 rounded-lg bg-muted/30">
-                <FileText className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
-                <p className="text-lg font-semibold text-card-foreground">{subject.assignments}</p>
-                <p className="text-xs text-muted-foreground">Assignments</p>
-              </div>
-            </div>
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="text-center p-3 rounded-lg bg-muted/30">
+                    <Users className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+                    <p className="text-lg font-semibold text-card-foreground">{subject.students}</p>
+                    <p className="text-xs text-muted-foreground">Students</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-muted/30">
+                    <Clock className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+                    <p className="text-lg font-semibold text-card-foreground">{subject.classesHeld}/{subject.totalClasses}</p>
+                    <p className="text-xs text-muted-foreground">Classes</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-muted/30">
+                    <FileText className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+                    <p className="text-lg font-semibold text-card-foreground">{subject.assignments}</p>
+                    <p className="text-xs text-muted-foreground">Assignments</p>
+                  </div>
+                </div>
 
-            {/* Syllabus Progress */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between text-sm mb-2">
-                <span className="text-muted-foreground">Syllabus Completed</span>
-                <span className="font-medium text-card-foreground">{subject.syllabus}%</span>
-              </div>
-              <Progress value={subject.syllabus} className="h-2" />
-            </div>
+                <div className="mb-4">
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span className="text-muted-foreground">Syllabus Completed</span>
+                    <span className="font-medium text-card-foreground">{subject.syllabus}%</span>
+                  </div>
+                  <Progress value={subject.syllabus} className="h-2" />
+                </div>
 
-            {/* Next Class */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/20">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-primary" />
-                <span className="text-sm text-card-foreground">
-                  Next: <span className="font-medium">{subject.nextClass}</span>
-                </span>
-              </div>
-              <span className="text-sm text-muted-foreground">{subject.room}</span>
-            </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/20">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-primary" />
+                    <span className="text-sm text-card-foreground">
+                      Next: <span className="font-medium">{subject.nextClass}</span>
+                    </span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">{subject.room}</span>
+                </div>
 
-            {/* Actions */}
-            <div className="flex gap-2 mt-4">
-              <Button variant="outline" size="sm" className="flex-1">
-                <FileText className="w-4 h-4 mr-1" />
-                Materials
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1">
-                <Users className="w-4 h-4 mr-1" />
-                Students
-              </Button>
-              <Button size="sm" className="flex-1">
-                View Details
-                <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
+                <div className="flex gap-2 mt-4">
+                  <Button variant="outline" size="sm" className="flex-1">
+                    <FileText className="w-4 h-4 mr-1" />
+                    Materials
+                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1">
+                    <Users className="w-4 h-4 mr-1" />
+                    Students
+                  </Button>
+                  <Button size="sm" className="flex-1">
+                    View Details
+                    <ArrowRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Recent Activities */}
+          <div className="glass-card p-6">
+            <h3 className="text-lg font-heading font-semibold text-card-foreground mb-4">
+              Recent Activities
+            </h3>
+            <div className="space-y-3">
+              {recentActivities.map((activity) => (
+                <div 
+                  key={activity.id}
+                  className="flex items-center gap-4 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-card-foreground">{activity.action}</p>
+                    <p className="text-xs text-muted-foreground">{activity.subject}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{activity.time}</span>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
-      </div>
+        </TabsContent>
 
-      {/* Recent Activities */}
-      <div className="glass-card p-6">
-        <h3 className="text-lg font-heading font-semibold text-card-foreground mb-4">
-          Recent Activities
-        </h3>
-        <div className="space-y-3">
-          {recentActivities.map((activity) => (
-            <div 
-              key={activity.id}
-              className="flex items-center gap-4 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-            >
-              <div className="w-8 h-8 rounded-full bg-success/20 flex items-center justify-center">
-                <CheckCircle2 className="w-4 h-4 text-success" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-card-foreground">{activity.action}</p>
-                <p className="text-xs text-muted-foreground">{activity.subject}</p>
-              </div>
-              <span className="text-xs text-muted-foreground">{activity.time}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+        <TabsContent value="syllabus">
+          <SyllabusCoverage />
+        </TabsContent>
+      </Tabs>
     </DashboardLayout>
   );
 };
