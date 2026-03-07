@@ -14,7 +14,7 @@ interface PaperHistoryProps {
 
 const PaperHistory = ({ subjects, departments }: PaperHistoryProps) => {
   const { data: configs = [], isLoading } = useQuery({
-    queryKey: ["question-paper-configs-history"],
+    queryKey: ["question-paper-configs"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("question_paper_configs")
