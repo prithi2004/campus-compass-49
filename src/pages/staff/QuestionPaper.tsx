@@ -1183,7 +1183,7 @@ const StaffQuestionPaper = () => {
                   shuffleQuestions={shuffleQuestions}
                   onQuestionsExtracted={(extracted: ExtractedQuestion[]) => {
                     const newQuestions = extracted.map((q, i) => ({
-                      id: questions.length + i + 1,
+                      id: i + 1,
                       text: q.question,
                       type: q.type,
                       marks: q.marks,
@@ -1191,7 +1191,7 @@ const StaffQuestionPaper = () => {
                       difficulty: q.difficulty,
                       bloomLevel: q.bloomLevel.toLowerCase(),
                     }));
-                    setQuestions(prev => [...prev, ...newQuestions]);
+                    setQuestions(newQuestions);
                   }}
                 />
 
