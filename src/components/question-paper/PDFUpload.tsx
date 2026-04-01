@@ -46,20 +46,83 @@ const selectByTaxonomy = (
     .map((q, i) => ({ q, i }))
     .filter(({ i }) => !usedIndices.has(i));
 
-  // Score each question based on how well it matches desired distributions
-  const scored = available.map(({ q, i }) => {
-    const bloomPct = bloomDistribution[q.bloomLevel.toLowerCase()] || 0;
-    const diffPct = difficultyMix[q.difficulty.toLowerCase()] || 0;
-    // Higher score = better match to desired distribution + randomness for variety
-    const score = (bloomPct / 100) * 0.5 + (diffPct / 100) * 0.3 + Math.random() * 0.2;
-    return { q, i, score };
-  });
+  if (available.length === 0) return { selected: [], indices: [] };
 
-  scored.sort((a, b) => b.score - a.score);
-  const picked = scored.slice(0, count);
+  // Calculate quotas for difficulty levels
+  const diffQuotas: Record<string, number> = {};
+  const totalDiffPct = Object.values(difficultyMix).reduce((s, v) => s + v, 0) || 1;
+  for (const [level, pct] of Object.entries(difficultyMix)) {
+    if (pct > 0) diffQuotas[level] = Math.max(1, Math.round((pct / totalDiffPct) * count));
+  }
+
+  // Calculate quotas for bloom levels
+  const bloomQuotas: Record<string, number> = {};
+  const totalBloomPct = Object.values(bloomDistribution).reduce((s, v) => s + v, 0) || 1;
+  for (const [level, pct] of Object.entries(bloomDistribution)) {
+    if (pct > 0) bloomQuotas[level] = Math.max(1, Math.round((pct / totalBloomPct) * count));
+  }
+
+  const selected: { q: ExtractedQuestion; i: number }[] = [];
+  const usedLocal = new Set<number>();
+
+  // Phase 1: Fill difficulty quotas first (primary constraint)
+  const diffLevels = Object.entries(diffQuotas).sort((a, b) => b[1] - a[1]);
+  for (const [diff, quota] of diffLevels) {
+    const matching = available.filter(
+      ({ q, i }) => q.difficulty.toLowerCase() === diff && !usedLocal.has(i)
+    );
+    // Within each difficulty, prefer questions that also match bloom quotas
+    const sorted = matching.sort((a, b) => {
+      const aBloomQuota = bloomQuotas[a.q.bloomLevel.toLowerCase()] || 0;
+      const bBloomQuota = bloomQuotas[b.q.bloomLevel.toLowerCase()] || 0;
+      // Prefer higher bloom quota + randomness
+      return (bBloomQuota - aBloomQuota) + (Math.random() - 0.5) * 2;
+    });
+    const toTake = Math.min(quota, sorted.length, count - selected.length);
+    for (let j = 0; j < toTake; j++) {
+      selected.push(sorted[j]);
+      usedLocal.add(sorted[j].i);
+      // Decrement bloom quota
+      const bl = sorted[j].q.bloomLevel.toLowerCase();
+      if (bloomQuotas[bl]) bloomQuotas[bl]--;
+    }
+    if (selected.length >= count) break;
+  }
+
+  // Phase 2: If still need more, fill remaining bloom quotas
+  if (selected.length < count) {
+    const remaining = available.filter(({ i }) => !usedLocal.has(i));
+    const bloomLevels = Object.entries(bloomQuotas)
+      .filter(([, q]) => q > 0)
+      .sort((a, b) => b[1] - a[1]);
+    for (const [bloom] of bloomLevels) {
+      if (selected.length >= count) break;
+      const matching = remaining.filter(
+        ({ q, i }) => q.bloomLevel.toLowerCase() === bloom && !usedLocal.has(i)
+      );
+      if (matching.length > 0) {
+        const pick = matching[Math.floor(Math.random() * matching.length)];
+        selected.push(pick);
+        usedLocal.add(pick.i);
+      }
+    }
+  }
+
+  // Phase 3: Fill any remaining slots randomly
+  if (selected.length < count) {
+    const remaining = available
+      .filter(({ i }) => !usedLocal.has(i))
+      .sort(() => Math.random() - 0.5);
+    for (const item of remaining) {
+      if (selected.length >= count) break;
+      selected.push(item);
+      usedLocal.add(item.i);
+    }
+  }
+
   return {
-    selected: picked.map(p => p.q),
-    indices: picked.map(p => p.i),
+    selected: selected.slice(0, count).map(p => p.q),
+    indices: selected.slice(0, count).map(p => p.i),
   };
 };
 
