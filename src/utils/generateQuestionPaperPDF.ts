@@ -73,7 +73,7 @@ export const generateQuestionPaperPDF = (
   }
 
   // Header
-  centerText("DHAANISH AHMED COLLEGE OF ENGINEERING", y, 16, true);
+  centerText("DHAANISH AHMED INSTITUTE OF TECHNOLOGY", y, 16, true);
   y += 8;
   centerText(EXAM_NAMES[config.examName] || config.examName || "Examination", y, 13, true);
   y += 8;
