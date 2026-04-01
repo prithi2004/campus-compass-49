@@ -675,68 +675,154 @@ const StaffQuestionPaper = () => {
               Syllabus Coverage & Difficulty Level
             </h3>
 
-            {/* Units Selection */}
+            {/* Units Selection with percentage bars */}
             <div className="space-y-3">
               <Label className="text-card-foreground">Select Units to Cover *</Label>
-              <div className="space-y-2">
-                {units.map((unit) => (
-                  <div key={unit} className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                    <Checkbox
-                      id={unit}
-                      checked={selectedUnits.includes(unit)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedUnits([...selectedUnits, unit]);
-                        } else {
-                          setSelectedUnits(selectedUnits.filter(u => u !== unit));
-                        }
-                      }}
-                    />
-                    <Label htmlFor={unit} className="text-card-foreground cursor-pointer flex-1">
-                      {unit}
-                    </Label>
-                  </div>
-                ))}
+              <div className="space-y-3">
+                {units.map((unit, idx) => {
+                  const isSelected = selectedUnits.includes(unit);
+                  const unitPct = selectedUnits.length > 0 && isSelected
+                    ? Math.round(100 / selectedUnits.length)
+                    : 0;
+                  const barColors = [
+                    "bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-purple-500", "bg-rose-500"
+                  ];
+                  return (
+                    <div key={unit} className={`p-4 rounded-lg border transition-colors ${isSelected ? "bg-primary/5 border-primary/30" : "bg-muted/30 border-border/50 hover:bg-muted/50"}`}>
+                      <div className="flex items-center gap-3 mb-2">
+                        <Checkbox
+                          id={unit}
+                          checked={isSelected}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedUnits([...selectedUnits, unit]);
+                            } else {
+                              setSelectedUnits(selectedUnits.filter(u => u !== unit));
+                            }
+                          }}
+                        />
+                        <Label htmlFor={unit} className="text-card-foreground cursor-pointer flex-1 text-sm font-medium">
+                          {unit}
+                        </Label>
+                        <span className={`text-sm font-bold ${isSelected ? "text-primary" : "text-muted-foreground"}`}>
+                          {unitPct}%
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted/50 overflow-hidden ml-7">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${barColors[idx % barColors.length]}`}
+                          style={{ width: `${unitPct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
+              {/* Overall unit coverage bar */}
+              {selectedUnits.length > 0 && (
+                <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">Unit Coverage Distribution</span>
+                    <span className="text-sm font-semibold text-primary">{selectedUnits.length} / {units.length} units selected</span>
+                  </div>
+                  <div className="flex h-3 rounded-full overflow-hidden">
+                    {selectedUnits.map((u, i) => {
+                      const barColors = ["bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-purple-500", "bg-rose-500"];
+                      const origIdx = units.indexOf(u);
+                      return (
+                        <div
+                          key={u}
+                          style={{ width: `${100 / selectedUnits.length}%` }}
+                          className={`${barColors[origIdx % barColors.length]} ${i === 0 ? "" : "border-l border-background"}`}
+                          title={u}
+                        />
+                      );
+                    })}
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selectedUnits.map((u) => {
+                      const barColors = ["bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-purple-500", "bg-rose-500"];
+                      const origIdx = units.indexOf(u);
+                      return (
+                        <div key={u} className="flex items-center gap-1.5">
+                          <div className={`w-2.5 h-2.5 rounded-full ${barColors[origIdx % barColors.length]}`} />
+                          <span className="text-xs text-muted-foreground">Unit {origIdx + 1}: {Math.round(100 / selectedUnits.length)}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Difficulty Distribution */}
+            {/* Difficulty Distribution with bars */}
             <div className="space-y-3">
               <Label className="text-card-foreground">Difficulty Level Distribution</Label>
               <div className="grid grid-cols-3 gap-4">
-                <div className="p-4 rounded-lg bg-success/10 border border-success/20 text-center">
-                  <p className="text-sm text-muted-foreground mb-2">Easy</p>
+                <div className="p-4 rounded-lg bg-success/10 border border-success/20">
+                  <p className="text-sm text-muted-foreground mb-2 text-center">Easy</p>
                   <Input
                     type="number"
                     value={difficultyMix.easy}
-                    onChange={(e) => setDifficultyMix({ ...difficultyMix, easy: parseInt(e.target.value) })}
-                    className="text-center bg-transparent border-success/30"
+                    onChange={(e) => setDifficultyMix({ ...difficultyMix, easy: parseInt(e.target.value) || 0 })}
+                    className="text-center bg-transparent border-success/30 mb-2"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">%</p>
+                  <div className="h-2 rounded-full bg-muted/50 overflow-hidden">
+                    <div className="h-full rounded-full bg-emerald-500 transition-all duration-300" style={{ width: `${difficultyMix.easy}%` }} />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 text-center">{difficultyMix.easy}%</p>
                 </div>
-                <div className="p-4 rounded-lg bg-warning/10 border border-warning/20 text-center">
-                  <p className="text-sm text-muted-foreground mb-2">Medium</p>
+                <div className="p-4 rounded-lg bg-warning/10 border border-warning/20">
+                  <p className="text-sm text-muted-foreground mb-2 text-center">Medium</p>
                   <Input
                     type="number"
                     value={difficultyMix.medium}
-                    onChange={(e) => setDifficultyMix({ ...difficultyMix, medium: parseInt(e.target.value) })}
-                    className="text-center bg-transparent border-warning/30"
+                    onChange={(e) => setDifficultyMix({ ...difficultyMix, medium: parseInt(e.target.value) || 0 })}
+                    className="text-center bg-transparent border-warning/30 mb-2"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">%</p>
+                  <div className="h-2 rounded-full bg-muted/50 overflow-hidden">
+                    <div className="h-full rounded-full bg-amber-500 transition-all duration-300" style={{ width: `${difficultyMix.medium}%` }} />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 text-center">{difficultyMix.medium}%</p>
                 </div>
-                <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-center">
-                  <p className="text-sm text-muted-foreground mb-2">Hard</p>
+                <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <p className="text-sm text-muted-foreground mb-2 text-center">Hard</p>
                   <Input
                     type="number"
                     value={difficultyMix.hard}
-                    onChange={(e) => setDifficultyMix({ ...difficultyMix, hard: parseInt(e.target.value) })}
-                    className="text-center bg-transparent border-destructive/30"
+                    onChange={(e) => setDifficultyMix({ ...difficultyMix, hard: parseInt(e.target.value) || 0 })}
+                    className="text-center bg-transparent border-destructive/30 mb-2"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">%</p>
+                  <div className="h-2 rounded-full bg-muted/50 overflow-hidden">
+                    <div className="h-full rounded-full bg-rose-500 transition-all duration-300" style={{ width: `${difficultyMix.hard}%` }} />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 text-center">{difficultyMix.hard}%</p>
+                </div>
+              </div>
+              {/* Combined difficulty bar */}
+              <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-muted-foreground">Total Distribution</span>
+                  <span className={`text-sm font-semibold ${
+                    difficultyMix.easy + difficultyMix.medium + difficultyMix.hard === 100
+                      ? "text-primary" : "text-destructive"
+                  }`}>
+                    {difficultyMix.easy + difficultyMix.medium + difficultyMix.hard}%
+                  </span>
+                </div>
+                <div className="flex h-3 rounded-full overflow-hidden">
+                  <div className="bg-emerald-500 transition-all duration-300" style={{ width: `${difficultyMix.easy}%` }} />
+                  <div className="bg-amber-500 transition-all duration-300" style={{ width: `${difficultyMix.medium}%` }} />
+                  <div className="bg-rose-500 transition-all duration-300" style={{ width: `${difficultyMix.hard}%` }} />
+                </div>
+                <div className="flex gap-4 mt-2">
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500" /><span className="text-xs text-muted-foreground">Easy: {difficultyMix.easy}%</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-amber-500" /><span className="text-xs text-muted-foreground">Medium: {difficultyMix.medium}%</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-rose-500" /><span className="text-xs text-muted-foreground">Hard: {difficultyMix.hard}%</span></div>
                 </div>
               </div>
               {difficultyMix.easy + difficultyMix.medium + difficultyMix.hard !== 100 && (
-                <p className="text-sm text-destructive">Total must equal 100%</p>
+                <p className="text-sm text-destructive">⚠ Total must equal 100%</p>
               )}
             </div>
           </div>
