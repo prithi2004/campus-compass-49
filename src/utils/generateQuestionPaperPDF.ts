@@ -126,8 +126,8 @@ export const generateQuestionPaperPDF = async (
       const pageCount = doc.getNumberOfPages();
       for (let p = 1; p <= pageCount; p++) {
         doc.setPage(p);
-        doc.setTextColor(240, 240, 240);
-        doc.setFontSize(70);
+        doc.setTextColor(200, 200, 200);
+        doc.setFontSize(80);
         doc.setFont("helvetica", "bold");
         doc.text("DAIT", pageWidth / 2, 160, { align: "center", angle: 45 });
       }
