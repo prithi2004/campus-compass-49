@@ -109,6 +109,7 @@ const StaffQuestionPaper = () => {
 
   // Syllabus & Difficulty
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
+  const [unitPercentages, setUnitPercentages] = useState<Record<string, number>>({});
   const [difficultyMix, setDifficultyMix] = useState({ easy: 30, medium: 50, hard: 20 });
 
   // Bloom's Taxonomy
