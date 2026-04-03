@@ -110,13 +110,29 @@ export const generateQuestionPaperPDF = (
     }
   };
 
-  // Watermark
-  if (config.watermark) {
-    doc.setTextColor(235, 235, 235);
-    doc.setFontSize(50);
-    doc.setFont("helvetica", "bold");
-    doc.text("CONFIDENTIAL", pageWidth / 2, 150, { align: "center", angle: 45 });
-    doc.setTextColor(0, 0, 0);
+  // Helper to add watermark on every page
+  const addWatermark = () => {
+    if (config.watermark) {
+      const pageCount = doc.getNumberOfPages();
+      for (let p = 1; p <= pageCount; p++) {
+        doc.setPage(p);
+        doc.setTextColor(240, 240, 240);
+        doc.setFontSize(70);
+        doc.setFont("helvetica", "bold");
+        doc.text("DAIT", pageWidth / 2, 160, { align: "center", angle: 45 });
+      }
+      doc.setPage(pageCount);
+      doc.setTextColor(0, 0, 0);
+    }
+  };
+
+  // ===== COLLEGE LOGO =====
+  try {
+    const logoImg = new Image();
+    logoImg.src = "/college-logo.png";
+    doc.addImage(logoImg, "PNG", margin, y - 4, 18, 18);
+  } catch (e) {
+    // Logo not available, skip
   }
 
   // ===== HEADER =====
@@ -455,6 +471,9 @@ export const generateQuestionPaperPDF = (
   checkPage(12);
   y += 4;
   centerText("*** All the Best ***", y, 10, true);
+
+  // Add watermark on all pages
+  addWatermark();
 
   // Save
   const fileName = `${config.subjectCode || "exam"}_${config.examName || "paper"}_QuestionPaper.pdf`;

@@ -109,6 +109,7 @@ const StaffQuestionPaper = () => {
 
   // Syllabus & Difficulty
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
+  const [unitPercentages, setUnitPercentages] = useState<Record<string, number>>({});
   const [difficultyMix, setDifficultyMix] = useState({ easy: 30, medium: 50, hard: 20 });
 
   // Bloom's Taxonomy
@@ -675,15 +676,13 @@ const StaffQuestionPaper = () => {
               Syllabus Coverage & Difficulty Level
             </h3>
 
-            {/* Units Selection with percentage bars */}
+            {/* Units Selection with custom percentage bars */}
             <div className="space-y-3">
               <Label className="text-card-foreground">Select Units to Cover *</Label>
               <div className="space-y-3">
                 {units.map((unit, idx) => {
                   const isSelected = selectedUnits.includes(unit);
-                  const unitPct = selectedUnits.length > 0 && isSelected
-                    ? Math.round(100 / selectedUnits.length)
-                    : 0;
+                  const unitPct = isSelected ? (unitPercentages[unit] || 0) : 0;
                   const barColors = [
                     "bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-purple-500", "bg-rose-500"
                   ];
@@ -695,18 +694,52 @@ const StaffQuestionPaper = () => {
                           checked={isSelected}
                           onCheckedChange={(checked) => {
                             if (checked) {
-                              setSelectedUnits([...selectedUnits, unit]);
+                              const newSelected = [...selectedUnits, unit];
+                              setSelectedUnits(newSelected);
+                              // Auto-distribute equally
+                              const eachPct = Math.floor(100 / newSelected.length);
+                              const newPcts: Record<string, number> = {};
+                              newSelected.forEach((u, i) => {
+                                newPcts[u] = i === newSelected.length - 1 ? 100 - eachPct * (newSelected.length - 1) : eachPct;
+                              });
+                              setUnitPercentages(newPcts);
                             } else {
-                              setSelectedUnits(selectedUnits.filter(u => u !== unit));
+                              const newSelected = selectedUnits.filter(u => u !== unit);
+                              setSelectedUnits(newSelected);
+                              if (newSelected.length > 0) {
+                                const eachPct = Math.floor(100 / newSelected.length);
+                                const newPcts: Record<string, number> = {};
+                                newSelected.forEach((u, i) => {
+                                  newPcts[u] = i === newSelected.length - 1 ? 100 - eachPct * (newSelected.length - 1) : eachPct;
+                                });
+                                setUnitPercentages(newPcts);
+                              } else {
+                                setUnitPercentages({});
+                              }
                             }
                           }}
                         />
                         <Label htmlFor={unit} className="text-card-foreground cursor-pointer flex-1 text-sm font-medium">
                           {unit}
                         </Label>
-                        <span className={`text-sm font-bold ${isSelected ? "text-primary" : "text-muted-foreground"}`}>
-                          {unitPct}%
-                        </span>
+                        {isSelected && (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={unitPct}
+                              onChange={(e) => {
+                                setUnitPercentages({ ...unitPercentages, [unit]: parseInt(e.target.value) || 0 });
+                              }}
+                              className="w-16 h-7 text-center text-xs"
+                            />
+                            <span className="text-sm font-bold text-primary">%</span>
+                          </div>
+                        )}
+                        {!isSelected && (
+                          <span className="text-sm font-bold text-muted-foreground">0%</span>
+                        )}
                       </div>
                       <div className="h-2 rounded-full bg-muted/50 overflow-hidden ml-7">
                         <div
@@ -719,40 +752,48 @@ const StaffQuestionPaper = () => {
                 })}
               </div>
               {/* Overall unit coverage bar */}
-              {selectedUnits.length > 0 && (
-                <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">Unit Coverage Distribution</span>
-                    <span className="text-sm font-semibold text-primary">{selectedUnits.length} / {units.length} units selected</span>
+              {selectedUnits.length > 0 && (() => {
+                const totalPct = selectedUnits.reduce((sum, u) => sum + (unitPercentages[u] || 0), 0);
+                return (
+                  <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-muted-foreground">Unit Coverage Distribution</span>
+                      <span className={`text-sm font-semibold ${totalPct === 100 ? "text-primary" : "text-destructive"}`}>
+                        Total: {totalPct}%
+                      </span>
+                    </div>
+                    <div className="flex h-3 rounded-full overflow-hidden">
+                      {selectedUnits.map((u, i) => {
+                        const barColors = ["bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-purple-500", "bg-rose-500"];
+                        const origIdx = units.indexOf(u);
+                        return (
+                          <div
+                            key={u}
+                            style={{ width: `${unitPercentages[u] || 0}%` }}
+                            className={`${barColors[origIdx % barColors.length]} ${i === 0 ? "" : "border-l border-background"} transition-all duration-300`}
+                            title={`${u}: ${unitPercentages[u] || 0}%`}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {selectedUnits.map((u) => {
+                        const barColors = ["bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-purple-500", "bg-rose-500"];
+                        const origIdx = units.indexOf(u);
+                        return (
+                          <div key={u} className="flex items-center gap-1.5">
+                            <div className={`w-2.5 h-2.5 rounded-full ${barColors[origIdx % barColors.length]}`} />
+                            <span className="text-xs text-muted-foreground">Unit {origIdx + 1}: {unitPercentages[u] || 0}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {totalPct !== 100 && (
+                      <p className="text-sm text-destructive mt-2">⚠ Total must equal 100%</p>
+                    )}
                   </div>
-                  <div className="flex h-3 rounded-full overflow-hidden">
-                    {selectedUnits.map((u, i) => {
-                      const barColors = ["bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-purple-500", "bg-rose-500"];
-                      const origIdx = units.indexOf(u);
-                      return (
-                        <div
-                          key={u}
-                          style={{ width: `${100 / selectedUnits.length}%` }}
-                          className={`${barColors[origIdx % barColors.length]} ${i === 0 ? "" : "border-l border-background"}`}
-                          title={u}
-                        />
-                      );
-                    })}
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {selectedUnits.map((u) => {
-                      const barColors = ["bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-purple-500", "bg-rose-500"];
-                      const origIdx = units.indexOf(u);
-                      return (
-                        <div key={u} className="flex items-center gap-1.5">
-                          <div className={`w-2.5 h-2.5 rounded-full ${barColors[origIdx % barColors.length]}`} />
-                          <span className="text-xs text-muted-foreground">Unit {origIdx + 1}: {Math.round(100 / selectedUnits.length)}%</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
 
             {/* Difficulty Distribution with bars */}
