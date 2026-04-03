@@ -287,7 +287,7 @@ const StaffQuestionPaper = () => {
       return;
     }
 
-    generateQuestionPaperPDF(questions, {
+    await generateQuestionPaperPDF(questions, {
       examName,
       academicYear: selectedYearName,
       semester,
