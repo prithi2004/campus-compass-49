@@ -472,6 +472,9 @@ export const generateQuestionPaperPDF = (
   y += 4;
   centerText("*** All the Best ***", y, 10, true);
 
+  // Add watermark on all pages
+  addWatermark();
+
   // Save
   const fileName = `${config.subjectCode || "exam"}_${config.examName || "paper"}_QuestionPaper.pdf`;
   doc.save(fileName);
