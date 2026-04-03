@@ -63,7 +63,17 @@ const getCO = (unit: string): string => {
   return match ? match[1] : "1";
 };
 
-export const generateQuestionPaperPDF = (
+const loadImage = (src: string): Promise<HTMLImageElement> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+};
+
+export const generateQuestionPaperPDF = async (
   questions: Question[],
   config: PaperConfig
 ) => {
