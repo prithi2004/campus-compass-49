@@ -257,7 +257,7 @@ const StaffQuestionPaper = () => {
     setQuestions(questions.filter(q => q.id !== id));
   };
 
-  const generatePaper = () => {
+  const generatePaper = async () => {
     if (!courseName) {
       toast({ title: "Error", description: "Please select a subject first.", variant: "destructive" });
       return;
@@ -287,7 +287,7 @@ const StaffQuestionPaper = () => {
       return;
     }
 
-    generateQuestionPaperPDF(questions, {
+    await generateQuestionPaperPDF(questions, {
       examName,
       academicYear: selectedYearName,
       semester,

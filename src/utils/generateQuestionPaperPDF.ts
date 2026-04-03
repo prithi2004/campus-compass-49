@@ -63,7 +63,17 @@ const getCO = (unit: string): string => {
   return match ? match[1] : "1";
 };
 
-export const generateQuestionPaperPDF = (
+const loadImage = (src: string): Promise<HTMLImageElement> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+};
+
+export const generateQuestionPaperPDF = async (
   questions: Question[],
   config: PaperConfig
 ) => {
@@ -128,9 +138,8 @@ export const generateQuestionPaperPDF = (
 
   // ===== COLLEGE LOGO =====
   try {
-    const logoImg = new Image();
-    logoImg.src = "/college-logo.png";
-    doc.addImage(logoImg, "PNG", margin, y - 4, 18, 18);
+    const logoImg = await loadImage("/college-logo.png");
+    doc.addImage(logoImg, "PNG", margin, y - 2, 20, 14);
   } catch (e) {
     // Logo not available, skip
   }
@@ -138,7 +147,7 @@ export const generateQuestionPaperPDF = (
   // ===== HEADER =====
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text("DHAANISH AHMED", pageWidth / 2, y, { align: "center" });
+  doc.text("DHAANISH AHMED", pageWidth / 2 + 5, y, { align: "center" });
   y += 5;
   doc.setFontSize(11);
   doc.text("INSTITUTE OF TECHNOLOGY", pageWidth / 2, y, { align: "center" });
