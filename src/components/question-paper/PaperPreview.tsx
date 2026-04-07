@@ -11,6 +11,7 @@ interface Question {
   unit: string;
   difficulty: string;
   bloomLevel: string;
+  part: "A" | "B" | "C";
 }
 
 interface PartConfig {
