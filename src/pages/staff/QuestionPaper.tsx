@@ -257,13 +257,22 @@ const StaffQuestionPaper = () => {
     setQuestions(questions.filter(q => q.id !== id));
   };
 
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const generatePaper = async () => {
     if (!courseName) {
       toast({ title: "Error", description: "Please select a subject first.", variant: "destructive" });
       return;
     }
-    
-    // Save config to database
+
+    if (questions.length === 0) {
+      toast({ title: "No questions", description: "Add questions before generating the paper.", variant: "destructive" });
+      return;
+    }
+
+    setIsGenerating(true);
+
+    // Save config in background (don't block PDF generation)
     savePaperConfig.mutate({
       subject_id: courseName,
       title: examName || "Untitled Paper",
@@ -281,30 +290,29 @@ const StaffQuestionPaper = () => {
       status: "generated",
     });
 
-    // Generate and download PDF
-    if (questions.length === 0) {
-      toast({ title: "No questions", description: "Add questions before generating the paper.", variant: "destructive" });
-      return;
+    try {
+      await generateQuestionPaperPDF(questions, {
+        examName,
+        academicYear: selectedYearName,
+        semester,
+        department: selectedDeptName,
+        courseName: selectedSubjectName,
+        subjectCode: subjectCode || selectedSubject?.code || "",
+        examDate,
+        duration,
+        maxMarks,
+        partA,
+        partB,
+        partC,
+        watermark,
+        includeAnswerKey,
+      });
+      toast({ title: "PDF Generated!", description: "Your question paper has been downloaded." });
+    } catch (e) {
+      toast({ title: "Error", description: "Failed to generate PDF. Please try again.", variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
     }
-
-    await generateQuestionPaperPDF(questions, {
-      examName,
-      academicYear: selectedYearName,
-      semester,
-      department: selectedDeptName,
-      courseName: selectedSubjectName,
-      subjectCode: subjectCode || selectedSubject?.code || "",
-      examDate,
-      duration,
-      maxMarks,
-      partA,
-      partB,
-      partC,
-      watermark,
-      includeAnswerKey,
-    });
-
-    toast({ title: "PDF Generated!", description: "Your question paper has been downloaded." });
   };
 
   const saveDraft = () => {
