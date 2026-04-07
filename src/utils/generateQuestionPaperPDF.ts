@@ -63,12 +63,13 @@ const getCO = (unit: string): string => {
   return match ? match[1] : "1";
 };
 
-const loadImage = (src: string): Promise<HTMLImageElement> => {
-  return new Promise((resolve, reject) => {
+const loadImage = (src: string, timeoutMs = 3000): Promise<HTMLImageElement | null> => {
+  return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = reject;
+    const timer = setTimeout(() => resolve(null), timeoutMs);
+    img.onload = () => { clearTimeout(timer); resolve(img); };
+    img.onerror = () => { clearTimeout(timer); resolve(null); };
     img.src = src;
   });
 };
