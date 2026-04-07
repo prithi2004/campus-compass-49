@@ -170,6 +170,7 @@ const StaffQuestionPaper = () => {
       unit: "Unit 1",
       difficulty: "medium",
       bloomLevel: "understand",
+      part: "A",
     };
     setQuestions([...questions, newQuestion]);
   };
