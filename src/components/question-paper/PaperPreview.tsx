@@ -180,7 +180,7 @@ const PaperPreview = ({
                   <h3 className="text-center font-bold text-foreground mb-2">
                     PART A — Answer all questions ({partA.marks} marks each)
                   </h3>
-                  {renderPartQuestions(partAQuestions, 1)}
+                  {renderPartAQuestions(partAQuestions, 1)}
                 </div>
               )}
               {partBQuestions.length > 0 && (
@@ -188,7 +188,7 @@ const PaperPreview = ({
                   <h3 className="text-center font-bold text-foreground mb-2">
                     PART B — Answer any {partB.questions} questions ({partB.marks} marks each)
                   </h3>
-                  {renderPartQuestions(partBQuestions, partAQuestions.length + 1)}
+                  {renderORQuestions(partBQuestions, partAQuestions.length + 1)}
                 </div>
               )}
               {partCQuestions.length > 0 && (
@@ -196,7 +196,7 @@ const PaperPreview = ({
                   <h3 className="text-center font-bold text-foreground mb-2">
                     PART C — Answer any {partC.questions} questions ({partC.marks} marks each)
                   </h3>
-                  {renderPartQuestions(partCQuestions, partAQuestions.length + partBQuestions.length + 1)}
+                  {renderORQuestions(partCQuestions, partAQuestions.length + Math.ceil(partBQuestions.length / 2) + 1)}
                 </div>
               )}
             </div>
