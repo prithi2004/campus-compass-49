@@ -13,6 +13,7 @@ interface Question {
   unit: string;
   difficulty: string;
   bloomLevel: string;
+  part: "A" | "B" | "C";
 }
 
 interface PartConfig {
@@ -240,6 +241,7 @@ const AutoGenerateButton = ({
           unit: q.unit,
           difficulty: q.difficulty,
           bloomLevel: q.bloom_level.toLowerCase(),
+          part: "A",
         });
       }
 
@@ -263,6 +265,7 @@ const AutoGenerateButton = ({
           unit: q.unit,
           difficulty: q.difficulty,
           bloomLevel: q.bloom_level.toLowerCase(),
+          part: "B",
         });
       }
 
@@ -284,6 +287,7 @@ const AutoGenerateButton = ({
           unit: q.unit,
           difficulty: q.difficulty,
           bloomLevel: q.bloom_level.toLowerCase(),
+          part: "C",
         });
       }
 

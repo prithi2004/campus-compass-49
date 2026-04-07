@@ -56,6 +56,7 @@ interface Question {
   unit: string;
   difficulty: string;
   bloomLevel: string;
+  part: "A" | "B" | "C";
 }
 
 const StaffQuestionPaper = () => {
@@ -169,6 +170,7 @@ const StaffQuestionPaper = () => {
       unit: "Unit 1",
       difficulty: "medium",
       bloomLevel: "understand",
+      part: "A",
     };
     setQuestions([...questions, newQuestion]);
   };
@@ -182,6 +184,7 @@ const StaffQuestionPaper = () => {
       unit: bankQ.unit,
       difficulty: bankQ.difficulty,
       bloomLevel: bankQ.bloom_level.toLowerCase(),
+      part: "A",
     };
     setQuestions([...questions, newQuestion]);
     toast({
@@ -1325,6 +1328,7 @@ const StaffQuestionPaper = () => {
                       unit: q.unit,
                       difficulty: q.difficulty,
                       bloomLevel: q.bloomLevel.toLowerCase(),
+                      part: "A" as const,
                     }));
                     setQuestions(newQuestions);
                   }}

@@ -8,6 +8,7 @@ interface Question {
   unit: string;
   difficulty: string;
   bloomLevel: string;
+  part: "A" | "B" | "C";
 }
 
 interface PaperConfig {
@@ -262,9 +263,9 @@ export const generateQuestionPaperPDF = async (
   y += bloomRowH + 5;
 
   // ===== QUESTIONS =====
-  const partAQuestions = questions.filter(q => q.marks <= config.partA.marks);
-  const partBQuestions = questions.filter(q => q.marks > config.partA.marks && q.marks <= config.partB.marks);
-  const partCQuestions = questions.filter(q => q.marks > config.partB.marks);
+  const partAQuestions = questions.filter(q => q.part === "A");
+  const partBQuestions = questions.filter(q => q.part === "B");
+  const partCQuestions = questions.filter(q => q.part === "C");
 
   // Question table column widths
   const qNoW = 12;

@@ -11,6 +11,7 @@ interface Question {
   unit: string;
   difficulty: string;
   bloomLevel: string;
+  part: "A" | "B" | "C";
 }
 
 interface PartConfig {
@@ -62,13 +63,11 @@ const PaperPreview = ({
   partC,
   watermark,
 }: PaperPreviewProps) => {
-  const partAQuestions = questions.filter(q => q.marks <= partA.marks);
-  const partBQuestions = questions.filter(q => q.marks > partA.marks && q.marks <= partB.marks);
-  const partCQuestions = questions.filter(q => q.marks > partB.marks);
+  const partAQuestions = questions.filter(q => q.part === "A");
+  const partBQuestions = questions.filter(q => q.part === "B");
+  const partCQuestions = questions.filter(q => q.part === "C");
 
-  // If grouping doesn't work, split sequentially
-  const hasGrouping = partAQuestions.length > 0 || partBQuestions.length > 0 || partCQuestions.length > 0;
-  const useGrouping = hasGrouping && (partAQuestions.length + partBQuestions.length + partCQuestions.length) === questions.length;
+  const useGrouping = partAQuestions.length > 0 || partBQuestions.length > 0 || partCQuestions.length > 0;
 
   const renderPartAQuestions = (qs: Question[], startNum: number) =>
     qs.map((q, i) => (
