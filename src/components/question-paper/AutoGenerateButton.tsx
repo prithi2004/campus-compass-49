@@ -143,19 +143,68 @@ const AutoGenerateButton = ({
     count: number,
     usedIds: Set<string>
   ): QuestionBankItem[] => {
-    const totalNeeded = partA.questions + partB.questions + partC.questions;
     const available = pool.filter(q => !usedIds.has(q.id));
+    if (available.length === 0) return [];
 
-    // Weight by bloom and difficulty distribution
-    const scored = available.map(q => {
-      const bloomPct = bloomDistribution[q.bloom_level.toLowerCase()] || 0;
-      const diffPct = difficultyMix[q.difficulty] || 0;
-      const score = (bloomPct / 100) * (diffPct / 100) + Math.random() * 0.3;
-      return { q, score };
+    const selected: QuestionBankItem[] = [];
+
+    // Phase 1: Quota-based selection by difficulty
+    const diffLevels = ["easy", "medium", "hard"];
+    const diffQuotas: Record<string, number> = {};
+    let assigned = 0;
+    diffLevels.forEach((d, i) => {
+      const pct = difficultyMix[d] || 0;
+      if (i === diffLevels.length - 1) {
+        diffQuotas[d] = count - assigned;
+      } else {
+        diffQuotas[d] = Math.round((pct / 100) * count);
+        assigned += diffQuotas[d];
+      }
     });
 
-    scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, count).map(s => s.q);
+    // Select per difficulty quota, respecting bloom distribution within each
+    for (const diff of diffLevels) {
+      const needed = diffQuotas[diff];
+      if (needed <= 0) continue;
+      
+      const diffPool = shuffleArray(available.filter(q => q.difficulty === diff && !selected.some(s => s.id === q.id)));
+      
+      // Sub-distribute by bloom level
+      const bloomLevels = ["remember", "understand", "apply", "analyse", "evaluate", "create"];
+      const bloomQuotas: Record<string, number> = {};
+      let bloomAssigned = 0;
+      bloomLevels.forEach((b, i) => {
+        const pct = bloomDistribution[b] || 0;
+        if (i === bloomLevels.length - 1) {
+          bloomQuotas[b] = needed - bloomAssigned;
+        } else {
+          bloomQuotas[b] = Math.round((pct / 100) * needed);
+          bloomAssigned += bloomQuotas[b];
+        }
+      });
+
+      for (const bloom of bloomLevels) {
+        const bNeeded = bloomQuotas[bloom];
+        if (bNeeded <= 0) continue;
+        const bloomPool = diffPool.filter(q => q.bloom_level.toLowerCase() === bloom && !selected.some(s => s.id === q.id));
+        selected.push(...bloomPool.slice(0, bNeeded));
+      }
+
+      // Fill remaining quota from this difficulty if bloom didn't fill it
+      const remaining = needed - selected.filter(q => q.difficulty === diff).length;
+      if (remaining > 0) {
+        const leftover = diffPool.filter(q => !selected.some(s => s.id === q.id));
+        selected.push(...leftover.slice(0, remaining));
+      }
+    }
+
+    // Phase 2: Fallback - fill any remaining slots from available pool
+    if (selected.length < count) {
+      const leftover = shuffleArray(available.filter(q => !selected.some(s => s.id === q.id)));
+      selected.push(...leftover.slice(0, count - selected.length));
+    }
+
+    return selected.slice(0, count);
   };
 
   const generate = () => {
@@ -174,7 +223,7 @@ const AutoGenerateButton = ({
       const result: Question[] = [];
       let qNum = 1;
 
-      // Part A - short/low marks questions
+      // Part A - short/low marks questions (answer all, no OR)
       const partAPool = subjectQuestions.filter(q => q.marks <= partA.marks + 2);
       const partASelected = selectQuestions(
         partAPool.length >= partA.questions ? partAPool : subjectQuestions,
@@ -194,13 +243,14 @@ const AutoGenerateButton = ({
         });
       }
 
-      // Part B - medium marks questions
+      // Part B - need 2x questions for (a) or (b) OR choices
+      const partBNeeded = partB.questions * 2;
       const partBPool = subjectQuestions.filter(
         q => q.marks > partA.marks && q.marks <= partB.marks + 5
       );
       const partBSelected = selectQuestions(
-        partBPool.length >= partB.questions ? partBPool : subjectQuestions,
-        partB.questions,
+        partBPool.length >= partBNeeded ? partBPool : subjectQuestions,
+        partBNeeded,
         usedIds
       );
       for (const q of partBSelected) {
@@ -216,11 +266,12 @@ const AutoGenerateButton = ({
         });
       }
 
-      // Part C - high marks questions
+      // Part C - need 2x questions for (a) or (b) OR choices
+      const partCNeeded = partC.questions * 2;
       const partCPool = subjectQuestions.filter(q => q.marks >= partC.marks - 5);
       const partCSelected = selectQuestions(
-        partCPool.length >= partC.questions ? partCPool : subjectQuestions,
-        partC.questions,
+        partCPool.length >= partCNeeded ? partCPool : subjectQuestions,
+        partCNeeded,
         usedIds
       );
       for (const q of partCSelected) {
@@ -240,7 +291,7 @@ const AutoGenerateButton = ({
         ? [
             ...shuffleArray(result.filter(q => q.marks === partA.marks)).map((q, i) => ({ ...q, id: i + 1 })),
             ...shuffleArray(result.filter(q => q.marks === partB.marks)).map((q, i) => ({ ...q, id: partA.questions + i + 1 })),
-            ...shuffleArray(result.filter(q => q.marks === partC.marks)).map((q, i) => ({ ...q, id: partA.questions + partB.questions + i + 1 })),
+            ...shuffleArray(result.filter(q => q.marks === partC.marks)).map((q, i) => ({ ...q, id: partA.questions + partB.questions * 2 + i + 1 })),
           ]
         : result;
 
