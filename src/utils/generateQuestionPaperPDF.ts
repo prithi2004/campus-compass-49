@@ -140,7 +140,9 @@ export const generateQuestionPaperPDF = async (
   // ===== COLLEGE LOGO =====
   try {
     const logoImg = await loadImage("/college-logo.png");
-    doc.addImage(logoImg, "PNG", margin, y - 2, 20, 14);
+    if (logoImg) {
+      doc.addImage(logoImg, "PNG", margin, y - 2, 20, 14);
+    }
   } catch (e) {
     // Logo not available, skip
   }
