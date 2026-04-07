@@ -1534,9 +1534,9 @@ const StaffQuestionPaper = () => {
                   watermark={watermark}
                 />
               </div>
-              <Button className="flex-1" onClick={generatePaper}>
-                <FileDown className="w-4 h-4 mr-2" />
-                Generate &amp; Download
+              <Button className="flex-1" onClick={generatePaper} disabled={isGenerating}>
+                {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileDown className="w-4 h-4 mr-2" />}
+                {isGenerating ? "Generating..." : "Generate & Download"}
               </Button>
             </div>
           </div>
