@@ -184,6 +184,7 @@ const StaffQuestionPaper = () => {
       unit: bankQ.unit,
       difficulty: bankQ.difficulty,
       bloomLevel: bankQ.bloom_level.toLowerCase(),
+      part: "A",
     };
     setQuestions([...questions, newQuestion]);
     toast({
