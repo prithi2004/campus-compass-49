@@ -378,9 +378,9 @@ const StaffQuestionPaper = () => {
             <Save className="w-4 h-4 mr-2" />
             Save Draft
           </Button>
-          <Button onClick={generatePaper}>
-            <FileDown className="w-4 h-4 mr-2" />
-            Generate Paper
+          <Button onClick={generatePaper} disabled={isGenerating}>
+            {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileDown className="w-4 h-4 mr-2" />}
+            {isGenerating ? "Generating..." : "Generate Paper"}
           </Button>
         </div>
       </div>
