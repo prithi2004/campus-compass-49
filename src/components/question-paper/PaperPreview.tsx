@@ -70,7 +70,7 @@ const PaperPreview = ({
   const hasGrouping = partAQuestions.length > 0 || partBQuestions.length > 0 || partCQuestions.length > 0;
   const useGrouping = hasGrouping && (partAQuestions.length + partBQuestions.length + partCQuestions.length) === questions.length;
 
-  const renderPartQuestions = (qs: Question[], startNum: number) =>
+  const renderPartAQuestions = (qs: Question[], startNum: number) =>
     qs.map((q, i) => (
       <div key={q.id} className="flex justify-between gap-4 py-1">
         <p className="text-sm text-card-foreground">
@@ -79,6 +79,37 @@ const PaperPreview = ({
         <span className="text-xs text-muted-foreground whitespace-nowrap">[{q.marks} marks]</span>
       </div>
     ));
+
+  const renderORQuestions = (qs: Question[], startNum: number) => {
+    const pairs: JSX.Element[] = [];
+    for (let i = 0; i < qs.length; i += 2) {
+      const qA = qs[i];
+      const qB = i + 1 < qs.length ? qs[i + 1] : null;
+      const qNumber = startNum + Math.floor(i / 2);
+      pairs.push(
+        <div key={qA.id} className="border border-border/40 rounded-md p-2 mb-2">
+          <div className="flex justify-between gap-4 py-1">
+            <p className="text-sm text-card-foreground">
+              {qNumber}. (a) {qA.text || <span className="italic text-muted-foreground">(Empty question)</span>}
+            </p>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">[{qA.marks} marks]</span>
+          </div>
+          {qB && (
+            <>
+              <p className="text-center text-xs font-bold text-muted-foreground my-1">(OR)</p>
+              <div className="flex justify-between gap-4 py-1">
+                <p className="text-sm text-card-foreground">
+                  &nbsp;&nbsp;&nbsp;&nbsp;(b) {qB.text || <span className="italic text-muted-foreground">(Empty question)</span>}
+                </p>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">[{qB.marks} marks]</span>
+              </div>
+            </>
+          )}
+        </div>
+      );
+    }
+    return pairs;
+  };
 
   return (
     <Dialog>
