@@ -241,6 +241,7 @@ const AutoGenerateButton = ({
           unit: q.unit,
           difficulty: q.difficulty,
           bloomLevel: q.bloom_level.toLowerCase(),
+          part: "A",
         });
       }
 
