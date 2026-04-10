@@ -147,59 +147,85 @@ const AutoGenerateButton = ({
     const available = pool.filter(q => !usedIds.has(q.id));
     if (available.length === 0) return [];
 
+    // Discover all unique units
+    const units = [...new Set(available.map(q => q.unit))];
+    
+    // Calculate per-unit quota (round-robin for even distribution)
+    const basePerUnit = Math.floor(count / units.length);
+    let remainder = count - basePerUnit * units.length;
+    const unitQuotas: Record<string, number> = {};
+    for (const unit of units) {
+      unitQuotas[unit] = basePerUnit + (remainder > 0 ? 1 : 0);
+      if (remainder > 0) remainder--;
+    }
+
     const selected: QuestionBankItem[] = [];
 
-    // Phase 1: Quota-based selection by difficulty
-    const diffLevels = ["easy", "medium", "hard"];
-    const diffQuotas: Record<string, number> = {};
-    let assigned = 0;
-    diffLevels.forEach((d, i) => {
-      const pct = difficultyMix[d] || 0;
-      if (i === diffLevels.length - 1) {
-        diffQuotas[d] = count - assigned;
-      } else {
-        diffQuotas[d] = Math.round((pct / 100) * count);
-        assigned += diffQuotas[d];
-      }
-    });
+    // For each unit, select questions respecting difficulty & bloom quotas
+    for (const unit of units) {
+      const unitPool = shuffleArray(available.filter(q => q.unit === unit && !selected.some(s => s.id === q.id)));
+      const unitCount = unitQuotas[unit];
+      if (unitCount <= 0 || unitPool.length === 0) continue;
 
-    // Select per difficulty quota, respecting bloom distribution within each
-    for (const diff of diffLevels) {
-      const needed = diffQuotas[diff];
-      if (needed <= 0) continue;
-      
-      const diffPool = shuffleArray(available.filter(q => q.difficulty === diff && !selected.some(s => s.id === q.id)));
-      
-      // Sub-distribute by bloom level
-      const bloomLevels = ["remember", "understand", "apply", "analyse", "evaluate", "create"];
-      const bloomQuotas: Record<string, number> = {};
-      let bloomAssigned = 0;
-      bloomLevels.forEach((b, i) => {
-        const pct = bloomDistribution[b] || 0;
-        if (i === bloomLevels.length - 1) {
-          bloomQuotas[b] = needed - bloomAssigned;
+      // Difficulty sub-distribution within this unit
+      const diffLevels = ["easy", "medium", "hard"];
+      const diffQuotas: Record<string, number> = {};
+      let diffAssigned = 0;
+      diffLevels.forEach((d, i) => {
+        const pct = difficultyMix[d] || 0;
+        if (i === diffLevels.length - 1) {
+          diffQuotas[d] = unitCount - diffAssigned;
         } else {
-          bloomQuotas[b] = Math.round((pct / 100) * needed);
-          bloomAssigned += bloomQuotas[b];
+          diffQuotas[d] = Math.round((pct / 100) * unitCount);
+          diffAssigned += diffQuotas[d];
         }
       });
 
-      for (const bloom of bloomLevels) {
-        const bNeeded = bloomQuotas[bloom];
-        if (bNeeded <= 0) continue;
-        const bloomPool = diffPool.filter(q => q.bloom_level.toLowerCase() === bloom && !selected.some(s => s.id === q.id));
-        selected.push(...bloomPool.slice(0, bNeeded));
+      for (const diff of diffLevels) {
+        const dNeeded = diffQuotas[diff];
+        if (dNeeded <= 0) continue;
+        const diffPool = unitPool.filter(q => q.difficulty === diff && !selected.some(s => s.id === q.id));
+
+        // Bloom sub-distribution within this difficulty+unit
+        const bloomLevels = ["remember", "understand", "apply", "analyse", "evaluate", "create"];
+        const bloomQuotas: Record<string, number> = {};
+        let bloomAssigned = 0;
+        bloomLevels.forEach((b, i) => {
+          const pct = bloomDistribution[b] || 0;
+          if (i === bloomLevels.length - 1) {
+            bloomQuotas[b] = dNeeded - bloomAssigned;
+          } else {
+            bloomQuotas[b] = Math.round((pct / 100) * dNeeded);
+            bloomAssigned += bloomQuotas[b];
+          }
+        });
+
+        for (const bloom of bloomLevels) {
+          const bNeeded = bloomQuotas[bloom];
+          if (bNeeded <= 0) continue;
+          const bloomPool = diffPool.filter(q => q.bloom_level.toLowerCase() === bloom && !selected.some(s => s.id === q.id));
+          selected.push(...bloomPool.slice(0, bNeeded));
+        }
+
+        // Fill remaining difficulty quota from this unit
+        const filled = selected.filter(q => q.difficulty === diff && q.unit === unit).length;
+        const remaining = dNeeded - filled;
+        if (remaining > 0) {
+          const leftover = diffPool.filter(q => !selected.some(s => s.id === q.id));
+          selected.push(...leftover.slice(0, remaining));
+        }
       }
 
-      // Fill remaining quota from this difficulty if bloom didn't fill it
-      const remaining = needed - selected.filter(q => q.difficulty === diff).length;
-      if (remaining > 0) {
-        const leftover = diffPool.filter(q => !selected.some(s => s.id === q.id));
-        selected.push(...leftover.slice(0, remaining));
+      // Fill remaining unit quota if difficulty didn't fill it
+      const unitFilled = selected.filter(q => q.unit === unit).length;
+      const unitRemaining = unitCount - unitFilled;
+      if (unitRemaining > 0) {
+        const leftover = unitPool.filter(q => !selected.some(s => s.id === q.id));
+        selected.push(...leftover.slice(0, unitRemaining));
       }
     }
 
-    // Phase 2: Fallback - fill any remaining slots from available pool
+    // Final fallback - fill any remaining slots from entire available pool
     if (selected.length < count) {
       const leftover = shuffleArray(available.filter(q => !selected.some(s => s.id === q.id)));
       selected.push(...leftover.slice(0, count - selected.length));
