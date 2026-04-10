@@ -98,11 +98,12 @@ const AutoGenerateButton = ({
     }
 
     // Check Bloom's distribution
+    const totalNeededForDist = partA.questions + partB.questions * 2 + partC.questions * 2;
     const bloomLevels = ["remember", "understand", "apply", "analyze", "evaluate", "create"];
     for (const level of bloomLevels) {
       const pct = bloomDistribution[level] || 0;
       if (pct > 0) {
-        const needed = Math.ceil((pct / 100) * totalNeeded);
+        const needed = Math.ceil((pct / 100) * totalNeededForDist);
         const available = subjectQuestions.filter(q => q.bloom_level.toLowerCase() === level).length;
         if (available < needed) {
           errs.push({
