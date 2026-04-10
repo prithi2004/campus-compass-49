@@ -59,7 +59,8 @@ const AutoGenerateButton = ({
 
   const validate = (): ValidationError[] => {
     const errs: ValidationError[] = [];
-    const totalNeeded = partA.questions + partB.questions + partC.questions;
+    // Part B and C need 2x questions for (a) or (b) OR choices
+    const totalNeeded = partA.questions + partB.questions * 2 + partC.questions * 2;
 
     if (!subjectId) {
       errs.push({ type: "error", message: "Please select a subject in Step 1 first." });
@@ -74,7 +75,7 @@ const AutoGenerateButton = ({
     if (subjectQuestions.length < totalNeeded) {
       errs.push({
         type: "error",
-        message: `Need ${totalNeeded} questions but only ${subjectQuestions.length} available for this subject.`,
+        message: `Need ${totalNeeded} questions (Part A: ${partA.questions}, Part B: ${partB.questions}×2, Part C: ${partC.questions}×2) but only ${subjectQuestions.length} available.`,
       });
     }
 
@@ -97,11 +98,12 @@ const AutoGenerateButton = ({
     }
 
     // Check Bloom's distribution
+    const totalNeededForDist = partA.questions + partB.questions * 2 + partC.questions * 2;
     const bloomLevels = ["remember", "understand", "apply", "analyze", "evaluate", "create"];
     for (const level of bloomLevels) {
       const pct = bloomDistribution[level] || 0;
       if (pct > 0) {
-        const needed = Math.ceil((pct / 100) * totalNeeded);
+        const needed = Math.ceil((pct / 100) * totalNeededForDist);
         const available = subjectQuestions.filter(q => q.bloom_level.toLowerCase() === level).length;
         if (available < needed) {
           errs.push({
@@ -116,7 +118,7 @@ const AutoGenerateButton = ({
     for (const diff of ["easy", "medium", "hard"]) {
       const pct = difficultyMix[diff] || 0;
       if (pct > 0) {
-        const needed = Math.ceil((pct / 100) * totalNeeded);
+        const needed = Math.ceil((pct / 100) * totalNeededForDist);
         const available = subjectQuestions.filter(q => q.difficulty === diff).length;
         if (available < needed) {
           errs.push({
@@ -319,9 +321,9 @@ const AutoGenerateButton = ({
 
       const finalResult = shuffleQuestions
         ? [
-            ...shuffleArray(result.filter(q => q.marks === partA.marks)).map((q, i) => ({ ...q, id: i + 1 })),
-            ...shuffleArray(result.filter(q => q.marks === partB.marks)).map((q, i) => ({ ...q, id: partA.questions + i + 1 })),
-            ...shuffleArray(result.filter(q => q.marks === partC.marks)).map((q, i) => ({ ...q, id: partA.questions + partB.questions * 2 + i + 1 })),
+            ...shuffleArray(result.filter(q => q.part === "A")).map((q, i) => ({ ...q, id: i + 1 })),
+            ...shuffleArray(result.filter(q => q.part === "B")).map((q, i) => ({ ...q, id: partA.questions + i + 1 })),
+            ...shuffleArray(result.filter(q => q.part === "C")).map((q, i) => ({ ...q, id: partA.questions + partB.questions * 2 + i + 1 })),
           ]
         : result;
 
@@ -357,23 +359,27 @@ const AutoGenerateButton = ({
           {/* Config summary */}
           <div className="grid grid-cols-3 gap-3">
             <div className="p-3 rounded-lg bg-muted/30 border border-border/50 text-center">
-              <p className="text-xs text-muted-foreground">Part A</p>
+              <p className="text-xs text-muted-foreground">Part A (Answer all)</p>
               <p className="font-bold text-card-foreground">{partA.questions} × {partA.marks}m</p>
+              <p className="text-xs text-muted-foreground">{partA.questions} questions</p>
             </div>
             <div className="p-3 rounded-lg bg-muted/30 border border-border/50 text-center">
-              <p className="text-xs text-muted-foreground">Part B</p>
+              <p className="text-xs text-muted-foreground">Part B (a OR b)</p>
               <p className="font-bold text-card-foreground">{partB.questions} × {partB.marks}m</p>
+              <p className="text-xs text-muted-foreground">{partB.questions * 2} questions ({partB.questions} pairs)</p>
             </div>
             <div className="p-3 rounded-lg bg-muted/30 border border-border/50 text-center">
-              <p className="text-xs text-muted-foreground">Part C</p>
+              <p className="text-xs text-muted-foreground">Part C (a OR b)</p>
               <p className="font-bold text-card-foreground">{partC.questions} × {partC.marks}m</p>
+              <p className="text-xs text-muted-foreground">{partC.questions * 2} questions ({partC.questions} pairs)</p>
             </div>
           </div>
 
           <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
             <p className="text-sm text-muted-foreground">
               Available: <strong className="text-card-foreground">{subjectQuestions.length}</strong> questions for selected subject |
-              Needed: <strong className="text-card-foreground">{partA.questions + partB.questions + partC.questions}</strong> total
+              Needed: <strong className="text-card-foreground">{partA.questions + partB.questions * 2 + partC.questions * 2}</strong> total
+              (A: {partA.questions} + B: {partB.questions}×2 + C: {partC.questions}×2)
             </p>
           </div>
 
