@@ -321,9 +321,9 @@ const AutoGenerateButton = ({
 
       const finalResult = shuffleQuestions
         ? [
-            ...shuffleArray(result.filter(q => q.marks === partA.marks)).map((q, i) => ({ ...q, id: i + 1 })),
-            ...shuffleArray(result.filter(q => q.marks === partB.marks)).map((q, i) => ({ ...q, id: partA.questions + i + 1 })),
-            ...shuffleArray(result.filter(q => q.marks === partC.marks)).map((q, i) => ({ ...q, id: partA.questions + partB.questions * 2 + i + 1 })),
+            ...shuffleArray(result.filter(q => q.part === "A")).map((q, i) => ({ ...q, id: i + 1 })),
+            ...shuffleArray(result.filter(q => q.part === "B")).map((q, i) => ({ ...q, id: partA.questions + i + 1 })),
+            ...shuffleArray(result.filter(q => q.part === "C")).map((q, i) => ({ ...q, id: partA.questions + partB.questions * 2 + i + 1 })),
           ]
         : result;
 
