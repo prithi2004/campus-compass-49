@@ -118,7 +118,7 @@ const AutoGenerateButton = ({
     for (const diff of ["easy", "medium", "hard"]) {
       const pct = difficultyMix[diff] || 0;
       if (pct > 0) {
-        const needed = Math.ceil((pct / 100) * totalNeeded);
+        const needed = Math.ceil((pct / 100) * totalNeededForDist);
         const available = subjectQuestions.filter(q => q.difficulty === diff).length;
         if (available < needed) {
           errs.push({
