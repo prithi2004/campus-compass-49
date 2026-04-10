@@ -59,7 +59,8 @@ const AutoGenerateButton = ({
 
   const validate = (): ValidationError[] => {
     const errs: ValidationError[] = [];
-    const totalNeeded = partA.questions + partB.questions + partC.questions;
+    // Part B and C need 2x questions for (a) or (b) OR choices
+    const totalNeeded = partA.questions + partB.questions * 2 + partC.questions * 2;
 
     if (!subjectId) {
       errs.push({ type: "error", message: "Please select a subject in Step 1 first." });
@@ -74,7 +75,7 @@ const AutoGenerateButton = ({
     if (subjectQuestions.length < totalNeeded) {
       errs.push({
         type: "error",
-        message: `Need ${totalNeeded} questions but only ${subjectQuestions.length} available for this subject.`,
+        message: `Need ${totalNeeded} questions (Part A: ${partA.questions}, Part B: ${partB.questions}×2, Part C: ${partC.questions}×2) but only ${subjectQuestions.length} available.`,
       });
     }
 
