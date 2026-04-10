@@ -396,6 +396,35 @@ const AutoGenerateButton = ({
             </div>
           )}
 
+          {/* Unit distribution stats */}
+          {generatedQuestions.length > 0 && (() => {
+            const unitCounts: Record<string, { total: number; A: number; B: number; C: number }> = {};
+            generatedQuestions.forEach(q => {
+              if (!unitCounts[q.unit]) unitCounts[q.unit] = { total: 0, A: 0, B: 0, C: 0 };
+              unitCounts[q.unit].total++;
+              unitCounts[q.unit][q.part]++;
+            });
+            const units = Object.entries(unitCounts).sort(([a], [b]) => a.localeCompare(b));
+            return (
+              <div className="p-3 rounded-lg bg-muted/30 border border-border/50 space-y-2">
+                <p className="text-sm font-medium text-card-foreground">Unit Distribution</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {units.map(([unit, counts]) => (
+                    <div key={unit} className="p-2 rounded bg-background/50 border border-border/30 text-center">
+                      <p className="text-xs font-medium text-card-foreground truncate">{unit}</p>
+                      <p className="text-lg font-bold text-primary">{counts.total}</p>
+                      <div className="flex justify-center gap-1 mt-1">
+                        {counts.A > 0 && <Badge variant="outline" className="text-[10px] px-1">A:{counts.A}</Badge>}
+                        {counts.B > 0 && <Badge variant="outline" className="text-[10px] px-1">B:{counts.B}</Badge>}
+                        {counts.C > 0 && <Badge variant="outline" className="text-[10px] px-1">C:{counts.C}</Badge>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Generated questions preview */}
           {generatedQuestions.length > 0 && (
             <div className="space-y-3">
