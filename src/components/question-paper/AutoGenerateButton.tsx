@@ -359,23 +359,27 @@ const AutoGenerateButton = ({
           {/* Config summary */}
           <div className="grid grid-cols-3 gap-3">
             <div className="p-3 rounded-lg bg-muted/30 border border-border/50 text-center">
-              <p className="text-xs text-muted-foreground">Part A</p>
+              <p className="text-xs text-muted-foreground">Part A (Answer all)</p>
               <p className="font-bold text-card-foreground">{partA.questions} × {partA.marks}m</p>
+              <p className="text-xs text-muted-foreground">{partA.questions} questions</p>
             </div>
             <div className="p-3 rounded-lg bg-muted/30 border border-border/50 text-center">
-              <p className="text-xs text-muted-foreground">Part B</p>
+              <p className="text-xs text-muted-foreground">Part B (a OR b)</p>
               <p className="font-bold text-card-foreground">{partB.questions} × {partB.marks}m</p>
+              <p className="text-xs text-muted-foreground">{partB.questions * 2} questions ({partB.questions} pairs)</p>
             </div>
             <div className="p-3 rounded-lg bg-muted/30 border border-border/50 text-center">
-              <p className="text-xs text-muted-foreground">Part C</p>
+              <p className="text-xs text-muted-foreground">Part C (a OR b)</p>
               <p className="font-bold text-card-foreground">{partC.questions} × {partC.marks}m</p>
+              <p className="text-xs text-muted-foreground">{partC.questions * 2} questions ({partC.questions} pairs)</p>
             </div>
           </div>
 
           <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
             <p className="text-sm text-muted-foreground">
               Available: <strong className="text-card-foreground">{subjectQuestions.length}</strong> questions for selected subject |
-              Needed: <strong className="text-card-foreground">{partA.questions + partB.questions + partC.questions}</strong> total
+              Needed: <strong className="text-card-foreground">{partA.questions + partB.questions * 2 + partC.questions * 2}</strong> total
+              (A: {partA.questions} + B: {partB.questions}×2 + C: {partC.questions}×2)
             </p>
           </div>
 
