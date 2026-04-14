@@ -252,13 +252,8 @@ const AutoGenerateButton = ({
       const result: Question[] = [];
       let qNum = 1;
 
-      // Part A - short/low marks questions (answer all, no OR)
-      const partAPool = subjectQuestions.filter(q => q.marks <= partA.marks + 2);
-      const partASelected = selectQuestions(
-        partAPool.length >= partA.questions ? partAPool : subjectQuestions,
-        partA.questions,
-        usedIds
-      );
+      // Part A - select from full pool, assign part marks
+      const partASelected = selectQuestions(subjectQuestions, partA.questions, usedIds);
       for (const q of partASelected) {
         usedIds.add(q.id);
         result.push({
@@ -275,14 +270,7 @@ const AutoGenerateButton = ({
 
       // Part B - need 2x questions for (a) or (b) OR choices
       const partBNeeded = partB.questions * 2;
-      const partBPool = subjectQuestions.filter(
-        q => q.marks > partA.marks && q.marks <= partB.marks + 5
-      );
-      const partBSelected = selectQuestions(
-        partBPool.length >= partBNeeded ? partBPool : subjectQuestions,
-        partBNeeded,
-        usedIds
-      );
+      const partBSelected = selectQuestions(subjectQuestions, partBNeeded, usedIds);
       for (const q of partBSelected) {
         usedIds.add(q.id);
         result.push({
@@ -299,12 +287,7 @@ const AutoGenerateButton = ({
 
       // Part C - need 2x questions for (a) or (b) OR choices
       const partCNeeded = partC.questions * 2;
-      const partCPool = subjectQuestions.filter(q => q.marks >= partC.marks - 5);
-      const partCSelected = selectQuestions(
-        partCPool.length >= partCNeeded ? partCPool : subjectQuestions,
-        partCNeeded,
-        usedIds
-      );
+      const partCSelected = selectQuestions(subjectQuestions, partCNeeded, usedIds);
       for (const q of partCSelected) {
         usedIds.add(q.id);
         result.push({
