@@ -56,6 +56,96 @@ const AutoGenerateButton = ({
   const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
 
   const subjectQuestions = questionBank.filter(q => q.subject_id === subjectId);
+  const generatedPartQuestions = {
+    A: generatedQuestions.filter(q => q.part === "A"),
+    B: generatedQuestions.filter(q => q.part === "B"),
+    C: generatedQuestions.filter(q => q.part === "C"),
+  };
+
+  const getPartStartNumber = (part: Question["part"]) => {
+    if (part === "A") return 1;
+    if (part === "B") return generatedPartQuestions.A.length + 1;
+    return generatedPartQuestions.A.length + Math.ceil(generatedPartQuestions.B.length / 2) + 1;
+  };
+
+  const renderGeneratedPartPreview = (part: Question["part"]) => {
+    const partQuestions = generatedPartQuestions[part];
+    if (partQuestions.length === 0) return null;
+
+    const partConfig = part === "A" ? partA : part === "B" ? partB : partC;
+    const startNumber = getPartStartNumber(part);
+    const sectionTitle =
+      part === "A"
+        ? "Answer all questions"
+        : "Answer one question from each pair";
+
+    return (
+      <div key={part} className="space-y-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <p className="text-sm font-medium text-card-foreground">
+            Part {part} — {sectionTitle}
+          </p>
+          <Badge variant="outline" className="text-xs">
+            {part === "A" ? `${partQuestions.length} questions` : `${Math.ceil(partQuestions.length / 2)} pairs`} · {partConfig.marks}m
+          </Badge>
+        </div>
+
+        {part === "A" ? (
+          <div className="space-y-2">
+            {partQuestions.map((q, index) => (
+              <div key={q.id} className="p-3 rounded-lg bg-muted/20 border border-border/30">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm text-card-foreground">
+                    <span className="font-medium text-primary">Q{startNumber + index}.</span> {q.text}
+                  </p>
+                  <div className="flex gap-1 shrink-0">
+                    <Badge variant="outline" className="text-xs">{q.unit}</Badge>
+                    <Badge variant="outline" className="text-xs capitalize">{q.bloomLevel}</Badge>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {partQuestions.reduce<JSX.Element[]>((pairs, q, index) => {
+              if (index % 2 !== 0) return pairs;
+
+              const alternate = partQuestions[index + 1];
+              const questionNumber = startNumber + Math.floor(index / 2);
+
+              pairs.push(
+                <div key={`${part}-${questionNumber}`} className="p-3 rounded-lg bg-muted/20 border border-border/30 space-y-2">
+                  <p className="text-sm font-medium text-primary">Question {questionNumber}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm text-card-foreground">(a) {q.text}</p>
+                    <div className="flex gap-1 shrink-0">
+                      <Badge variant="outline" className="text-xs">{q.unit}</Badge>
+                      <Badge variant="outline" className="text-xs capitalize">{q.bloomLevel}</Badge>
+                    </div>
+                  </div>
+                  {alternate && (
+                    <>
+                      <p className="text-center text-xs font-semibold text-muted-foreground">(OR)</p>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm text-card-foreground">(b) {alternate.text}</p>
+                        <div className="flex gap-1 shrink-0">
+                          <Badge variant="outline" className="text-xs">{alternate.unit}</Badge>
+                          <Badge variant="outline" className="text-xs capitalize">{alternate.bloomLevel}</Badge>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+
+              return pairs;
+            }, [])}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const validate = (): ValidationError[] => {
     const errs: ValidationError[] = [];
@@ -424,20 +514,8 @@ const AutoGenerateButton = ({
                 </span>
               </div>
 
-              <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
-                {generatedQuestions.map((q, i) => (
-                  <div key={i} className="p-3 rounded-lg bg-muted/20 border border-border/30">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm text-card-foreground">
-                        <span className="font-medium text-primary">Q{q.id}.</span> {q.text}
-                      </p>
-                      <div className="flex gap-1 shrink-0">
-                        <Badge variant="outline" className="text-xs">{q.marks}m</Badge>
-                        <Badge variant="outline" className="text-xs capitalize">{q.bloomLevel}</Badge>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="max-h-60 overflow-y-auto space-y-4 pr-1">
+                {(["A", "B", "C"] as const).map((part) => renderGeneratedPartPreview(part))}
               </div>
             </div>
           )}
