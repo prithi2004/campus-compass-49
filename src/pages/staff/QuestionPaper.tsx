@@ -151,6 +151,12 @@ const StaffQuestionPaper = () => {
   const selectedSubjectName = selectedSubject?.name || "";
   const selectedDeptName = selectedDept?.name || "";
   const selectedYearName = selectedYear?.name || "";
+  const questionPartGroups = {
+    A: questions.filter(q => q.part === "A"),
+    B: questions.filter(q => q.part === "B"),
+    C: questions.filter(q => q.part === "C"),
+  };
+  const usePartSections = questionPartGroups.B.length > 0 || questionPartGroups.C.length > 0;
 
   // Filter question bank
   const filteredBankQuestions = questionBank.filter(q => {
@@ -348,6 +354,160 @@ const StaffQuestionPaper = () => {
       hard: "bg-red-500/20 text-red-400 border-red-500/30"
     };
     return colors[difficulty] || "";
+  };
+
+  const getPartStartNumber = (part: Question["part"]) => {
+    if (part === "A") return 1;
+    if (part === "B") return questionPartGroups.A.length + 1;
+    return questionPartGroups.A.length + Math.ceil(questionPartGroups.B.length / 2) + 1;
+  };
+
+  const renderEditableQuestionCard = (question: Question, label: string) => (
+    <div key={question.id} className="p-4 rounded-lg bg-muted/30 border border-border/50">
+      <div className="flex items-start justify-between mb-3 gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-primary">{label}</span>
+          <Badge variant="outline">Part {question.part}</Badge>
+          <Badge variant="outline">{question.unit}</Badge>
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => removeQuestion(question.id)}>
+          <Trash2 className="w-4 h-4 text-destructive" />
+        </Button>
+      </div>
+      <div className="space-y-3">
+        <Textarea
+          placeholder="Enter question text..."
+          value={question.text}
+          onChange={(e) => updateQuestion(question.id, "text", e.target.value)}
+          className="bg-muted/50 border-border/50 resize-none"
+          rows={3}
+        />
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <Select
+            value={question.type}
+            onValueChange={(v) => updateQuestion(question.id, "type", v)}
+          >
+            <SelectTrigger className="bg-muted/50 border-border/50">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="mcq">MCQ</SelectItem>
+              <SelectItem value="short">Short Answer</SelectItem>
+              <SelectItem value="descriptive">Descriptive</SelectItem>
+              <SelectItem value="numerical">Numerical</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            type="number"
+            placeholder="Marks"
+            value={question.marks}
+            onChange={(e) => updateQuestion(question.id, "marks", parseInt(e.target.value))}
+            className="bg-muted/50 border-border/50"
+          />
+          <Select
+            value={question.unit}
+            onValueChange={(v) => updateQuestion(question.id, "unit", v)}
+          >
+            <SelectTrigger className="bg-muted/50 border-border/50">
+              <SelectValue placeholder="Unit" />
+            </SelectTrigger>
+            <SelectContent>
+              {[1,2,3,4,5].map(u => (
+                <SelectItem key={u} value={`Unit ${u}`}>Unit {u}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={question.difficulty}
+            onValueChange={(v) => updateQuestion(question.id, "difficulty", v)}
+          >
+            <SelectTrigger className="bg-muted/50 border-border/50">
+              <SelectValue placeholder="Difficulty" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="easy">Easy</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="hard">Hard</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={question.bloomLevel}
+            onValueChange={(v) => updateQuestion(question.id, "bloomLevel", v)}
+          >
+            <SelectTrigger className="bg-muted/50 border-border/50">
+              <SelectValue placeholder="Bloom's" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="remember">Remember</SelectItem>
+              <SelectItem value="understand">Understand</SelectItem>
+              <SelectItem value="apply">Apply</SelectItem>
+              <SelectItem value="analyze">Analyze</SelectItem>
+              <SelectItem value="evaluate">Evaluate</SelectItem>
+              <SelectItem value="create">Create</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderQuestionPartSection = (part: Question["part"]) => {
+    const partQuestions = questionPartGroups[part];
+    if (partQuestions.length === 0) return null;
+
+    const startNumber = getPartStartNumber(part);
+    const partConfig = part === "A" ? partA : part === "B" ? partB : partC;
+    const sectionTitle =
+      part === "A"
+        ? "Answer all questions"
+        : "Answer one question from each pair";
+
+    return (
+      <div key={part} className="space-y-4">
+        <div className="p-4 rounded-lg bg-muted/20 border border-border/50 flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h4 className="font-semibold text-card-foreground">Part {part}</h4>
+            <p className="text-sm text-muted-foreground">{sectionTitle}</p>
+          </div>
+          <Badge variant="outline">
+            {part === "A" ? `${partQuestions.length} questions` : `${Math.ceil(partQuestions.length / 2)} pairs`} · {partConfig.marks} marks each
+          </Badge>
+        </div>
+
+        {part === "A" ? (
+          <div className="space-y-4">
+            {partQuestions.map((question, index) => renderEditableQuestionCard(question, `Question ${startNumber + index}`))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {partQuestions.reduce<JSX.Element[]>((pairs, question, index) => {
+              if (index % 2 !== 0) return pairs;
+
+              const alternate = partQuestions[index + 1];
+              const questionNumber = startNumber + Math.floor(index / 2);
+
+              pairs.push(
+                <div key={`${part}-${questionNumber}`} className="p-4 rounded-lg bg-muted/10 border border-border/40 space-y-4">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-sm font-medium text-primary">Question {questionNumber}</span>
+                    <Badge variant="outline">Part {part}</Badge>
+                  </div>
+                  {renderEditableQuestionCard(question, "(a)")}
+                  {alternate && (
+                    <>
+                      <p className="text-center text-xs font-semibold text-muted-foreground">(OR)</p>
+                      {renderEditableQuestionCard(alternate, "(b)")}
+                    </>
+                  )}
+                </div>
+              );
+
+              return pairs;
+            }, [])}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -1371,6 +1531,10 @@ const StaffQuestionPaper = () => {
                 <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>No questions added yet.</p>
                 <p className="text-sm mt-1">Click "Import from Bank" or "Add New" to start.</p>
+              </div>
+            ) : usePartSections ? (
+              <div className="space-y-6">
+                {(["A", "B", "C"] as const).map((part) => renderQuestionPartSection(part))}
               </div>
             ) : (
               <div className="space-y-4">
