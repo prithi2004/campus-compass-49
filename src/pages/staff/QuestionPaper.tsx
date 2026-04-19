@@ -460,7 +460,7 @@ const StaffQuestionPaper = () => {
     const sectionTitle =
       part === "A"
         ? "Answer all questions"
-        : "Answer one question from each pair";
+        : "Each question has (a) OR (b) options";
 
     return (
       <div key={part} className="space-y-4">
@@ -764,10 +764,10 @@ const StaffQuestionPaper = () => {
 
             {/* Part B */}
             <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
-              <h4 className="font-medium text-card-foreground mb-3">Part B - Descriptive (Answer Any)</h4>
+              <h4 className="font-medium text-card-foreground mb-3">Part B - Descriptive ((a) OR (b) for each question)</h4>
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm text-muted-foreground">No. of Questions</Label>
+                  <Label className="text-sm text-muted-foreground">No. of Main Questions</Label>
                   <Input
                     type="number"
                     value={partB.questions}
@@ -798,10 +798,10 @@ const StaffQuestionPaper = () => {
 
             {/* Part C */}
             <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
-              <h4 className="font-medium text-card-foreground mb-3">Part C - Long Answers / Essays</h4>
+              <h4 className="font-medium text-card-foreground mb-3">Part C - Long Answers ((a) OR (b) for each question)</h4>
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm text-muted-foreground">No. of Questions</Label>
+                  <Label className="text-sm text-muted-foreground">No. of Main Questions</Label>
                   <Input
                     type="number"
                     value={partC.questions}

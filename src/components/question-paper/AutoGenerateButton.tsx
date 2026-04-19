@@ -77,7 +77,7 @@ const AutoGenerateButton = ({
     const sectionTitle =
       part === "A"
         ? "Answer all questions"
-        : "Answer one question from each pair";
+        : "Each question has (a) OR (b) options";
 
     return (
       <div key={part} className="space-y-2">
