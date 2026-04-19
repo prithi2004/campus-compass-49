@@ -344,7 +344,7 @@ export const generateQuestionPaperPDF = async (
     checkPage(20);
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
-    const partBLabel = `Part – B : Answer all the Questions`;
+    const partBLabel = `Part – B : Each question has (a) OR (b) options`;
     const partBMarks = `${config.partB.questions} x ${config.partB.marks} = ${config.partB.total} Marks`;
     doc.text(partBLabel, pageWidth / 2 - 20, y, { align: "center" });
     doc.text(partBMarks, pageWidth - margin, y, { align: "right" });
@@ -357,8 +357,8 @@ export const generateQuestionPaperPDF = async (
       const qB = i + 1 < partBQuestions.length ? partBQuestions[i + 1] : null;
 
       // Calculate total height for the combined row
-      const textA = `(i) ${qA.text}`;
-      const textB = qB ? `(ii) ${qB.text}` : "";
+      const textA = `(a) ${qA.text}`;
+      const textB = qB ? `(b) ${qB.text}` : "";
       const hA = getRowHeight(textA);
       const orH = 5;
       const hB = qB ? getRowHeight(textB) : 0;
@@ -420,7 +420,7 @@ export const generateQuestionPaperPDF = async (
     checkPage(20);
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
-    const partCLabel = `Part – C : Answer all the Questions`;
+    const partCLabel = `Part – C : Each question has (a) OR (b) options`;
     const partCMarks = `${config.partC.questions} x ${config.partC.marks} = ${config.partC.total} Marks`;
     doc.text(partCLabel, pageWidth / 2 - 20, y, { align: "center" });
     doc.text(partCMarks, pageWidth - margin, y, { align: "right" });
@@ -432,8 +432,8 @@ export const generateQuestionPaperPDF = async (
       const qA = partCQuestions[i];
       const qB = i + 1 < partCQuestions.length ? partCQuestions[i + 1] : null;
 
-      const textA = `(i) ${qA.text}`;
-      const textB = qB ? `(ii) ${qB.text}` : "";
+      const textA = `(a) ${qA.text}`;
+      const textB = qB ? `(b) ${qB.text}` : "";
       const hA = getRowHeight(textA);
       const orH = 5;
       const hB = qB ? getRowHeight(textB) : 0;
