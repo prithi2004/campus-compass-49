@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Eye } from "lucide-react";
+import { getQuestionPartGroups, pairOrQuestions, type PartConfig } from "@/utils/questionPaperPattern";
 
 interface Question {
   id: number;
@@ -12,12 +13,6 @@ interface Question {
   difficulty: string;
   bloomLevel: string;
   part: "A" | "B" | "C";
-}
-
-interface PartConfig {
-  questions: number;
-  marks: number;
-  total: number;
 }
 
 interface PaperPreviewProps {
@@ -63,9 +58,10 @@ const PaperPreview = ({
   partC,
   watermark,
 }: PaperPreviewProps) => {
-  const partAQuestions = questions.filter(q => q.part === "A");
-  const partBQuestions = questions.filter(q => q.part === "B");
-  const partCQuestions = questions.filter(q => q.part === "C");
+  const partGroups = getQuestionPartGroups(questions, { partA, partB, partC });
+  const partAQuestions = partGroups.A;
+  const partBQuestions = partGroups.B;
+  const partCQuestions = partGroups.C;
 
   const useGrouping = partAQuestions.length > 0 || partBQuestions.length > 0 || partCQuestions.length > 0;
 
@@ -80,34 +76,27 @@ const PaperPreview = ({
     ));
 
   const renderORQuestions = (qs: Question[], startNum: number) => {
-    const pairs: JSX.Element[] = [];
-    for (let i = 0; i < qs.length; i += 2) {
-      const qA = qs[i];
-      const qB = i + 1 < qs.length ? qs[i + 1] : null;
-      const qNumber = startNum + Math.floor(i / 2);
-      pairs.push(
-        <div key={qA.id} className="border border-border/40 rounded-md p-2 mb-2">
+    return pairOrQuestions(qs, startNum).map(({ questionNumber, optionA, optionB }) => (
+        <div key={optionA.id} className="border border-border/40 rounded-md p-2 mb-2">
           <div className="flex justify-between gap-4 py-1">
             <p className="text-sm text-card-foreground">
-              {qNumber}. (a) {qA.text || <span className="italic text-muted-foreground">(Empty question)</span>}
+              {questionNumber}. (a) {optionA.text || <span className="italic text-muted-foreground">(Empty question)</span>}
             </p>
-            <span className="text-xs text-muted-foreground whitespace-nowrap">[{qA.marks} marks]</span>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">[{optionA.marks} marks]</span>
           </div>
-          {qB && (
+          {optionB && (
             <>
               <p className="text-center text-xs font-bold text-muted-foreground my-1">(OR)</p>
               <div className="flex justify-between gap-4 py-1">
                 <p className="text-sm text-card-foreground">
-                  &nbsp;&nbsp;&nbsp;&nbsp;(b) {qB.text || <span className="italic text-muted-foreground">(Empty question)</span>}
+                  &nbsp;&nbsp;&nbsp;&nbsp;(b) {optionB.text || <span className="italic text-muted-foreground">(Empty question)</span>}
                 </p>
-                <span className="text-xs text-muted-foreground whitespace-nowrap">[{qB.marks} marks]</span>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">[{optionB.marks} marks]</span>
               </div>
             </>
           )}
         </div>
-      );
-    }
-    return pairs;
+      ));
   };
 
   return (
@@ -177,7 +166,7 @@ const PaperPreview = ({
               {partAQuestions.length > 0 && (
                 <div>
                   <h3 className="text-center font-bold text-foreground mb-2">
-                    PART A — Answer all questions ({partA.marks} marks each)
+                    Part – A : Answer all the Questions ({partA.questions} × {partA.marks} = {partA.total} Marks)
                   </h3>
                   {renderPartAQuestions(partAQuestions, 1)}
                 </div>
@@ -185,7 +174,7 @@ const PaperPreview = ({
               {partBQuestions.length > 0 && (
                 <div>
                   <h3 className="text-center font-bold text-foreground mb-2">
-                    PART B — Answer any {partB.questions} questions ({partB.marks} marks each)
+                    Part – B : Answer all the Questions ({partB.questions} × {partB.marks} = {partB.total} Marks)
                   </h3>
                   {renderORQuestions(partBQuestions, partAQuestions.length + 1)}
                 </div>
@@ -193,7 +182,7 @@ const PaperPreview = ({
               {partCQuestions.length > 0 && (
                 <div>
                   <h3 className="text-center font-bold text-foreground mb-2">
-                    PART C — Answer any {partC.questions} questions ({partC.marks} marks each)
+                    Part – C : Answer all the Questions ({partC.questions} × {partC.marks} = {partC.total} Marks)
                   </h3>
                   {renderORQuestions(partCQuestions, partAQuestions.length + Math.ceil(partBQuestions.length / 2) + 1)}
                 </div>

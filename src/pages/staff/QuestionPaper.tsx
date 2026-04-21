@@ -47,6 +47,7 @@ import AutoGenerateButton from "@/components/question-paper/AutoGenerateButton";
 import PaperPreview from "@/components/question-paper/PaperPreview";
 import PaperHistory from "@/components/question-paper/PaperHistory";
 import { generateQuestionPaperPDF } from "@/utils/generateQuestionPaperPDF";
+import { getQuestionPartGroups, normalizeQuestionPaperQuestions, pairOrQuestions } from "@/utils/questionPaperPattern";
 
 interface Question {
   id: number;
@@ -151,12 +152,8 @@ const StaffQuestionPaper = () => {
   const selectedSubjectName = selectedSubject?.name || "";
   const selectedDeptName = selectedDept?.name || "";
   const selectedYearName = selectedYear?.name || "";
-  const questionPartGroups = {
-    A: questions.filter(q => q.part === "A"),
-    B: questions.filter(q => q.part === "B"),
-    C: questions.filter(q => q.part === "C"),
-  };
-  const usePartSections = questionPartGroups.B.length > 0 || questionPartGroups.C.length > 0;
+  const questionPartGroups = getQuestionPartGroups(questions, { partA, partB, partC });
+  const usePartSections = questions.length > 0;
 
   // Filter question bank
   const filteredBankQuestions = questionBank.filter(q => {
@@ -300,7 +297,8 @@ const StaffQuestionPaper = () => {
     });
 
     try {
-      await generateQuestionPaperPDF(questions, {
+      const normalizedQuestions = normalizeQuestionPaperQuestions(questions, { partA, partB, partC });
+      await generateQuestionPaperPDF(normalizedQuestions, {
         examName,
         academicYear: selectedYearName,
         semester,
@@ -480,30 +478,21 @@ const StaffQuestionPaper = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {partQuestions.reduce<JSX.Element[]>((pairs, question, index) => {
-              if (index % 2 !== 0) return pairs;
-
-              const alternate = partQuestions[index + 1];
-              const questionNumber = startNumber + Math.floor(index / 2);
-
-              pairs.push(
+            {pairOrQuestions(partQuestions, startNumber).map(({ questionNumber, optionA, optionB }) => (
                 <div key={`${part}-${questionNumber}`} className="p-4 rounded-lg bg-muted/10 border border-border/40 space-y-4">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <span className="text-sm font-medium text-primary">Question {questionNumber}</span>
                     <Badge variant="outline">Part {part}</Badge>
                   </div>
-                  {renderEditableQuestionCard(question, "(a)")}
-                  {alternate && (
+                  {renderEditableQuestionCard(optionA, "(a)")}
+                  {optionB && (
                     <>
                       <p className="text-center text-xs font-semibold text-muted-foreground">(OR)</p>
-                      {renderEditableQuestionCard(alternate, "(b)")}
+                      {renderEditableQuestionCard(optionB, "(b)")}
                     </>
                   )}
                 </div>
-              );
-
-              return pairs;
-            }, [])}
+              ))}
           </div>
         )}
       </div>
