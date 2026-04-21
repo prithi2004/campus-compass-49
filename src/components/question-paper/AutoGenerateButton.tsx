@@ -169,14 +169,22 @@ const AutoGenerateButton = ({
       });
     }
 
-    // Check Bloom's distribution
+    // Check Bloom's distribution (normalize analyze/analyse)
     const totalNeededForDist = getTotalQuestionsNeeded({ partA, partB, partC });
-    const bloomLevels = ["remember", "understand", "apply", "analyze", "evaluate", "create"];
+    const bloomLevels = ["remember", "understand", "apply", "analyse", "evaluate", "create"];
+    const normalizedBloomDist: Record<string, number> = {};
+    for (const k of Object.keys(bloomDistribution)) {
+      const nk = k.toLowerCase() === "analyze" ? "analyse" : k.toLowerCase();
+      normalizedBloomDist[nk] = (normalizedBloomDist[nk] || 0) + (bloomDistribution[k] || 0);
+    }
     for (const level of bloomLevels) {
-      const pct = bloomDistribution[level] || 0;
+      const pct = normalizedBloomDist[level] || 0;
       if (pct > 0) {
         const needed = Math.ceil((pct / 100) * totalNeededForDist);
-        const available = subjectQuestions.filter(q => q.bloom_level.toLowerCase() === level).length;
+        const available = subjectQuestions.filter(q => {
+          const b = q.bloom_level.toLowerCase();
+          return (b === "analyze" ? "analyse" : b) === level;
+        }).length;
         if (available < needed) {
           errs.push({
             type: "warning",
