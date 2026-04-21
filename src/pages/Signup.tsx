@@ -51,7 +51,6 @@ const Signup = () => {
         email,
         password,
         options: {
-          data: { full_name: fullName, desired_role: selectedRole },
           data: { full_name: fullName, desired_role: selectedRole, invitation_token: inviteToken },
           emailRedirectTo: window.location.origin,
         },
