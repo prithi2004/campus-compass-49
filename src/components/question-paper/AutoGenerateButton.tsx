@@ -213,96 +213,164 @@ const AutoGenerateButton = ({
     return shuffled;
   };
 
+  // Normalize bloom level strings (handles analyze/analyse, casing, whitespace)
+  const normalizeBloom = (s: string): string => {
+    const v = (s || "").toLowerCase().trim();
+    if (v === "analyze") return "analyse";
+    return v;
+  };
+
+  // Compute integer quotas from a percentage map using largest-remainder method
+  const computeQuotas = (
+    distribution: Record<string, number>,
+    total: number,
+    keys: string[]
+  ): Record<string, number> => {
+    const quotas: Record<string, number> = {};
+    const remainders: { key: string; remainder: number }[] = [];
+    let assigned = 0;
+    const sumPct = keys.reduce((s, k) => s + (distribution[k] || 0), 0) || 100;
+
+    for (const k of keys) {
+      const exact = ((distribution[k] || 0) / sumPct) * total;
+      const floor = Math.floor(exact);
+      quotas[k] = floor;
+      assigned += floor;
+      remainders.push({ key: k, remainder: exact - floor });
+    }
+
+    let remaining = total - assigned;
+    remainders.sort((a, b) => b.remainder - a.remainder);
+    for (let i = 0; i < remainders.length && remaining > 0; i++) {
+      if ((distribution[remainders[i].key] || 0) > 0) {
+        quotas[remainders[i].key]++;
+        remaining--;
+      }
+    }
+    // If still remaining (all percentages were 0 for some keys), distribute round-robin
+    let idx = 0;
+    while (remaining > 0 && remainders.length > 0) {
+      quotas[remainders[idx % remainders.length].key]++;
+      remaining--;
+      idx++;
+    }
+    return quotas;
+  };
+
   const selectQuestions = (
     pool: QuestionBankItem[],
     count: number,
     usedIds: Set<string>
   ): QuestionBankItem[] => {
     const available = pool.filter(q => !usedIds.has(q.id));
-    if (available.length === 0) return [];
+    if (available.length === 0 || count <= 0) return [];
 
-    // Discover all unique units
-    const units = [...new Set(available.map(q => q.unit))];
-    
-    // Calculate per-unit quota (round-robin for even distribution)
-    const basePerUnit = Math.floor(count / units.length);
-    let remainder = count - basePerUnit * units.length;
-    const unitQuotas: Record<string, number> = {};
-    for (const unit of units) {
-      unitQuotas[unit] = basePerUnit + (remainder > 0 ? 1 : 0);
-      if (remainder > 0) remainder--;
+    const bloomKeys = ["remember", "understand", "apply", "analyse", "evaluate", "create"];
+    const diffKeys = ["easy", "medium", "hard"];
+
+    // Normalize bloom distribution keys (analyze -> analyse)
+    const normalizedBloom: Record<string, number> = {};
+    for (const k of Object.keys(bloomDistribution)) {
+      const nk = normalizeBloom(k);
+      normalizedBloom[nk] = (normalizedBloom[nk] || 0) + (bloomDistribution[k] || 0);
     }
+
+    // Global quotas across the whole part
+    const bloomQuotas = computeQuotas(normalizedBloom, count, bloomKeys);
+    const diffQuotas = computeQuotas(difficultyMix, count, diffKeys);
+
+    // Build buckets by (difficulty, bloom)
+    const bucket: Record<string, QuestionBankItem[]> = {};
+    for (const q of available) {
+      const key = `${q.difficulty}|${normalizeBloom(q.bloom_level)}`;
+      (bucket[key] ||= []).push(q);
+    }
+    for (const k of Object.keys(bucket)) bucket[k] = shuffleArray(bucket[k]);
 
     const selected: QuestionBankItem[] = [];
+    const selectedIds = new Set<string>();
+    const unitCounts: Record<string, number> = {};
+    const units = [...new Set(available.map(q => q.unit))];
+    units.forEach(u => (unitCounts[u] = 0));
 
-    // For each unit, select questions respecting difficulty & bloom quotas
-    for (const unit of units) {
-      const unitPool = shuffleArray(available.filter(q => q.unit === unit && !selected.some(s => s.id === q.id)));
-      const unitCount = unitQuotas[unit];
-      if (unitCount <= 0 || unitPool.length === 0) continue;
+    const pickFromBucket = (key: string, preferLeastUsedUnit = true): QuestionBankItem | null => {
+      const arr = bucket[key];
+      if (!arr || arr.length === 0) return null;
+      const candidates = arr.filter(q => !selectedIds.has(q.id));
+      if (candidates.length === 0) return null;
+      if (preferLeastUsedUnit) {
+        candidates.sort((a, b) => (unitCounts[a.unit] || 0) - (unitCounts[b.unit] || 0));
+      }
+      return candidates[0];
+    };
 
-      // Difficulty sub-distribution within this unit
-      const diffLevels = ["easy", "medium", "hard"];
-      const diffQuotas: Record<string, number> = {};
-      let diffAssigned = 0;
-      diffLevels.forEach((d, i) => {
-        const pct = difficultyMix[d] || 0;
-        if (i === diffLevels.length - 1) {
-          diffQuotas[d] = unitCount - diffAssigned;
-        } else {
-          diffQuotas[d] = Math.round((pct / 100) * unitCount);
-          diffAssigned += diffQuotas[d];
-        }
-      });
-
-      for (const diff of diffLevels) {
-        const dNeeded = diffQuotas[diff];
-        if (dNeeded <= 0) continue;
-        const diffPool = unitPool.filter(q => q.difficulty === diff && !selected.some(s => s.id === q.id));
-
-        // Bloom sub-distribution within this difficulty+unit
-        const bloomLevels = ["remember", "understand", "apply", "analyse", "evaluate", "create"];
-        const bloomQuotas: Record<string, number> = {};
-        let bloomAssigned = 0;
-        bloomLevels.forEach((b, i) => {
-          const pct = bloomDistribution[b] || 0;
-          if (i === bloomLevels.length - 1) {
-            bloomQuotas[b] = dNeeded - bloomAssigned;
-          } else {
-            bloomQuotas[b] = Math.round((pct / 100) * dNeeded);
-            bloomAssigned += bloomQuotas[b];
-          }
-        });
-
-        for (const bloom of bloomLevels) {
-          const bNeeded = bloomQuotas[bloom];
-          if (bNeeded <= 0) continue;
-          const bloomPool = diffPool.filter(q => q.bloom_level.toLowerCase() === bloom && !selected.some(s => s.id === q.id));
-          selected.push(...bloomPool.slice(0, bNeeded));
-        }
-
-        // Fill remaining difficulty quota from this unit
-        const filled = selected.filter(q => q.difficulty === diff && q.unit === unit).length;
-        const remaining = dNeeded - filled;
-        if (remaining > 0) {
-          const leftover = diffPool.filter(q => !selected.some(s => s.id === q.id));
-          selected.push(...leftover.slice(0, remaining));
+    // First pass: try to satisfy difficulty x bloom intersections
+    for (const diff of diffKeys) {
+      let dRemaining = diffQuotas[diff];
+      if (dRemaining <= 0) continue;
+      // Distribute this difficulty's quota across bloom levels per global bloom proportions
+      const bloomForDiff = computeQuotas(normalizedBloom, dRemaining, bloomKeys);
+      for (const bloom of bloomKeys) {
+        let need = bloomForDiff[bloom];
+        while (need > 0) {
+          const q = pickFromBucket(`${diff}|${bloom}`);
+          if (!q) break;
+          selected.push(q);
+          selectedIds.add(q.id);
+          unitCounts[q.unit] = (unitCounts[q.unit] || 0) + 1;
+          need--;
+          dRemaining--;
         }
       }
-
-      // Fill remaining unit quota if difficulty didn't fill it
-      const unitFilled = selected.filter(q => q.unit === unit).length;
-      const unitRemaining = unitCount - unitFilled;
-      if (unitRemaining > 0) {
-        const leftover = unitPool.filter(q => !selected.some(s => s.id === q.id));
-        selected.push(...leftover.slice(0, unitRemaining));
+      // Fill remaining difficulty quota from any bloom level of same difficulty
+      if (dRemaining > 0) {
+        const sameDiff = available
+          .filter(q => q.difficulty === diff && !selectedIds.has(q.id))
+          .sort((a, b) => (unitCounts[a.unit] || 0) - (unitCounts[b.unit] || 0));
+        for (const q of sameDiff) {
+          if (dRemaining <= 0) break;
+          selected.push(q);
+          selectedIds.add(q.id);
+          unitCounts[q.unit] = (unitCounts[q.unit] || 0) + 1;
+          dRemaining--;
+        }
       }
     }
 
-    // Final fallback - fill any remaining slots from entire available pool
+    // Second pass: enforce remaining bloom quotas with any difficulty
+    const bloomFilled: Record<string, number> = {};
+    bloomKeys.forEach(b => (bloomFilled[b] = 0));
+    selected.forEach(q => {
+      const b = normalizeBloom(q.bloom_level);
+      if (bloomFilled[b] !== undefined) bloomFilled[b]++;
+    });
+
+    for (const bloom of bloomKeys) {
+      let need = bloomQuotas[bloom] - bloomFilled[bloom];
+      if (need <= 0) continue;
+      const candidates = available
+        .filter(q => normalizeBloom(q.bloom_level) === bloom && !selectedIds.has(q.id))
+        .sort((a, b) => (unitCounts[a.unit] || 0) - (unitCounts[b.unit] || 0));
+      for (const q of candidates) {
+        if (need <= 0 || selected.length >= count) break;
+        selected.push(q);
+        selectedIds.add(q.id);
+        unitCounts[q.unit] = (unitCounts[q.unit] || 0) + 1;
+        need--;
+      }
+    }
+
+    // Final fallback - fill remaining slots, balancing units
     if (selected.length < count) {
-      const leftover = shuffleArray(available.filter(q => !selected.some(s => s.id === q.id)));
-      selected.push(...leftover.slice(0, count - selected.length));
+      const leftover = available
+        .filter(q => !selectedIds.has(q.id))
+        .sort((a, b) => (unitCounts[a.unit] || 0) - (unitCounts[b.unit] || 0));
+      for (const q of leftover) {
+        if (selected.length >= count) break;
+        selected.push(q);
+        selectedIds.add(q.id);
+        unitCounts[q.unit] = (unitCounts[q.unit] || 0) + 1;
+      }
     }
 
     return selected.slice(0, count);
