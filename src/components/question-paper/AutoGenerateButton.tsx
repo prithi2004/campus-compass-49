@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Brain, Loader2, AlertCircle, CheckCircle2, Shuffle } from "lucide-react";
 import { type QuestionBankItem } from "@/hooks/useQuestionBank";
+import { getQuestionPartGroups, getTotalQuestionsNeeded, pairOrQuestions, type PartConfig } from "@/utils/questionPaperPattern";
 
 interface Question {
   id: number;
@@ -14,12 +15,6 @@ interface Question {
   difficulty: string;
   bloomLevel: string;
   part: "A" | "B" | "C";
-}
-
-interface PartConfig {
-  questions: number;
-  marks: number;
-  total: number;
 }
 
 interface AutoGenerateProps {
@@ -56,11 +51,7 @@ const AutoGenerateButton = ({
   const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
 
   const subjectQuestions = questionBank.filter(q => q.subject_id === subjectId);
-  const generatedPartQuestions = {
-    A: generatedQuestions.filter(q => q.part === "A"),
-    B: generatedQuestions.filter(q => q.part === "B"),
-    C: generatedQuestions.filter(q => q.part === "C"),
-  };
+  const generatedPartQuestions = getQuestionPartGroups(generatedQuestions, { partA, partB, partC });
 
   const getPartStartNumber = (part: Question["part"]) => {
     if (part === "A") return 1;
@@ -108,39 +99,30 @@ const AutoGenerateButton = ({
           </div>
         ) : (
           <div className="space-y-2">
-            {partQuestions.reduce<JSX.Element[]>((pairs, q, index) => {
-              if (index % 2 !== 0) return pairs;
-
-              const alternate = partQuestions[index + 1];
-              const questionNumber = startNumber + Math.floor(index / 2);
-
-              pairs.push(
+            {pairOrQuestions(partQuestions, startNumber).map(({ questionNumber, optionA, optionB }) => (
                 <div key={`${part}-${questionNumber}`} className="p-3 rounded-lg bg-muted/20 border border-border/30 space-y-2">
-                  <p className="text-sm font-medium text-primary">Question {questionNumber}</p>
+                  <p className="text-sm font-medium text-primary">{questionNumber}</p>
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm text-card-foreground">(a) {q.text}</p>
+                    <p className="text-sm text-card-foreground">(a) {optionA.text}</p>
                     <div className="flex gap-1 shrink-0">
-                      <Badge variant="outline" className="text-xs">{q.unit}</Badge>
-                      <Badge variant="outline" className="text-xs capitalize">{q.bloomLevel}</Badge>
+                      <Badge variant="outline" className="text-xs">{optionA.unit}</Badge>
+                      <Badge variant="outline" className="text-xs capitalize">{optionA.bloomLevel}</Badge>
                     </div>
                   </div>
-                  {alternate && (
+                  {optionB && (
                     <>
                       <p className="text-center text-xs font-semibold text-muted-foreground">(OR)</p>
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm text-card-foreground">(b) {alternate.text}</p>
+                        <p className="text-sm text-card-foreground">(b) {optionB.text}</p>
                         <div className="flex gap-1 shrink-0">
-                          <Badge variant="outline" className="text-xs">{alternate.unit}</Badge>
-                          <Badge variant="outline" className="text-xs capitalize">{alternate.bloomLevel}</Badge>
+                          <Badge variant="outline" className="text-xs">{optionB.unit}</Badge>
+                          <Badge variant="outline" className="text-xs capitalize">{optionB.bloomLevel}</Badge>
                         </div>
                       </div>
                     </>
                   )}
                 </div>
-              );
-
-              return pairs;
-            }, [])}
+              ))}
           </div>
         )}
       </div>
@@ -150,7 +132,7 @@ const AutoGenerateButton = ({
   const validate = (): ValidationError[] => {
     const errs: ValidationError[] = [];
     // Part B and C need 2x questions for (a) or (b) OR choices
-    const totalNeeded = partA.questions + partB.questions * 2 + partC.questions * 2;
+    const totalNeeded = getTotalQuestionsNeeded({ partA, partB, partC });
 
     if (!subjectId) {
       errs.push({ type: "error", message: "Please select a subject in Step 1 first." });
@@ -188,7 +170,7 @@ const AutoGenerateButton = ({
     }
 
     // Check Bloom's distribution
-    const totalNeededForDist = partA.questions + partB.questions * 2 + partC.questions * 2;
+    const totalNeededForDist = getTotalQuestionsNeeded({ partA, partB, partC });
     const bloomLevels = ["remember", "understand", "apply", "analyze", "evaluate", "create"];
     for (const level of bloomLevels) {
       const pct = bloomDistribution[level] || 0;
@@ -451,7 +433,7 @@ const AutoGenerateButton = ({
           <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
             <p className="text-sm text-muted-foreground">
               Available: <strong className="text-card-foreground">{subjectQuestions.length}</strong> questions for selected subject |
-              Needed: <strong className="text-card-foreground">{partA.questions + partB.questions * 2 + partC.questions * 2}</strong> total
+              Needed: <strong className="text-card-foreground">{getTotalQuestionsNeeded({ partA, partB, partC })}</strong> total
               (A: {partA.questions} + B: {partB.questions}×2 + C: {partC.questions}×2)
             </p>
           </div>
