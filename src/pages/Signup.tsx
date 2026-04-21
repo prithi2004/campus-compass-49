@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,11 +20,23 @@ const Signup = () => {
   const navigate = useNavigate();
   const { signUp } = useAuthContext();
   const { toast } = useToast();
+  const inviteToken = new URLSearchParams(window.location.search).get("token");
   const [selectedRole, setSelectedRole] = useState<AppRole>("student");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!inviteToken) return;
+
+    supabase.rpc("validate_invitation_token", { _token: inviteToken }).then(({ data }) => {
+      const invitation = data?.[0];
+      if (!invitation) return;
+      setEmail(invitation.email);
+      setSelectedRole(invitation.role);
+    });
+  }, [inviteToken]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +52,7 @@ const Signup = () => {
         password,
         options: {
           data: { full_name: fullName, desired_role: selectedRole },
+          data: { full_name: fullName, desired_role: selectedRole, invitation_token: inviteToken },
           emailRedirectTo: window.location.origin,
         },
       });

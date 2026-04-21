@@ -428,9 +428,7 @@ export const generateQuestionPaperPDF = async (
 
     drawQuestionTableHeader();
 
-    for (let i = 0; i < partCQuestions.length; i += 2) {
-      const qA = partCQuestions[i];
-      const qB = i + 1 < partCQuestions.length ? partCQuestions[i + 1] : null;
+    for (const { questionNumber, optionA: qA, optionB: qB } of pairOrQuestions(partCQuestions, qNum)) {
 
       const textA = `(a) ${qA.text}`;
       const textB = qB ? `(b) ${qB.text}` : "";
@@ -475,7 +473,7 @@ export const generateQuestionPaperPDF = async (
         y += hB;
       }
 
-      qNum++;
+      qNum = questionNumber + 1;
     }
     y += 5;
   }

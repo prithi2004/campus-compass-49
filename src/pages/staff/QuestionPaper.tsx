@@ -478,30 +478,21 @@ const StaffQuestionPaper = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {partQuestions.reduce<JSX.Element[]>((pairs, question, index) => {
-              if (index % 2 !== 0) return pairs;
-
-              const alternate = partQuestions[index + 1];
-              const questionNumber = startNumber + Math.floor(index / 2);
-
-              pairs.push(
+            {pairOrQuestions(partQuestions, startNumber).map(({ questionNumber, optionA, optionB }) => (
                 <div key={`${part}-${questionNumber}`} className="p-4 rounded-lg bg-muted/10 border border-border/40 space-y-4">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <span className="text-sm font-medium text-primary">Question {questionNumber}</span>
                     <Badge variant="outline">Part {part}</Badge>
                   </div>
-                  {renderEditableQuestionCard(question, "(a)")}
-                  {alternate && (
+                  {renderEditableQuestionCard(optionA, "(a)")}
+                  {optionB && (
                     <>
                       <p className="text-center text-xs font-semibold text-muted-foreground">(OR)</p>
-                      {renderEditableQuestionCard(alternate, "(b)")}
+                      {renderEditableQuestionCard(optionB, "(b)")}
                     </>
                   )}
                 </div>
-              );
-
-              return pairs;
-            }, [])}
+              ))}
           </div>
         )}
       </div>
