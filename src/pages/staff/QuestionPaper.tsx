@@ -47,6 +47,7 @@ import AutoGenerateButton from "@/components/question-paper/AutoGenerateButton";
 import PaperPreview from "@/components/question-paper/PaperPreview";
 import PaperHistory from "@/components/question-paper/PaperHistory";
 import { generateQuestionPaperPDF } from "@/utils/generateQuestionPaperPDF";
+import { getQuestionPartGroups, normalizeQuestionPaperQuestions, pairOrQuestions } from "@/utils/questionPaperPattern";
 
 interface Question {
   id: number;
@@ -151,12 +152,8 @@ const StaffQuestionPaper = () => {
   const selectedSubjectName = selectedSubject?.name || "";
   const selectedDeptName = selectedDept?.name || "";
   const selectedYearName = selectedYear?.name || "";
-  const questionPartGroups = {
-    A: questions.filter(q => q.part === "A"),
-    B: questions.filter(q => q.part === "B"),
-    C: questions.filter(q => q.part === "C"),
-  };
-  const usePartSections = questionPartGroups.B.length > 0 || questionPartGroups.C.length > 0;
+  const questionPartGroups = getQuestionPartGroups(questions, { partA, partB, partC });
+  const usePartSections = questions.length > 0;
 
   // Filter question bank
   const filteredBankQuestions = questionBank.filter(q => {
@@ -300,7 +297,8 @@ const StaffQuestionPaper = () => {
     });
 
     try {
-      await generateQuestionPaperPDF(questions, {
+      const normalizedQuestions = normalizeQuestionPaperQuestions(questions, { partA, partB, partC });
+      await generateQuestionPaperPDF(normalizedQuestions, {
         examName,
         academicYear: selectedYearName,
         semester,

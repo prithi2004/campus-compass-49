@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import { normalizeQuestionPaperQuestions, pairOrQuestions } from "@/utils/questionPaperPattern";
 
 interface Question {
   id: number;
@@ -263,9 +264,10 @@ export const generateQuestionPaperPDF = async (
   y += bloomRowH + 5;
 
   // ===== QUESTIONS =====
-  const partAQuestions = questions.filter(q => q.part === "A");
-  const partBQuestions = questions.filter(q => q.part === "B");
-  const partCQuestions = questions.filter(q => q.part === "C");
+  const normalizedQuestions = normalizeQuestionPaperQuestions(questions, config);
+  const partAQuestions = normalizedQuestions.filter(q => q.part === "A");
+  const partBQuestions = normalizedQuestions.filter(q => q.part === "B");
+  const partCQuestions = normalizedQuestions.filter(q => q.part === "C");
 
   // Question table column widths
   const qNoW = 12;
@@ -352,9 +354,7 @@ export const generateQuestionPaperPDF = async (
 
     drawQuestionTableHeader();
 
-    for (let i = 0; i < partBQuestions.length; i += 2) {
-      const qA = partBQuestions[i];
-      const qB = i + 1 < partBQuestions.length ? partBQuestions[i + 1] : null;
+    for (const { questionNumber, optionA: qA, optionB: qB } of pairOrQuestions(partBQuestions, qNum)) {
 
       // Calculate total height for the combined row
       const textA = `(a) ${qA.text}`;
@@ -410,7 +410,7 @@ export const generateQuestionPaperPDF = async (
         y += hB;
       }
 
-      qNum++;
+      qNum = questionNumber + 1;
     }
     y += 5;
   }
