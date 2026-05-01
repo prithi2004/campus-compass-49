@@ -368,16 +368,39 @@ const AutoGenerateButton = ({
       }
     }
 
-    // Final fallback - fill remaining slots, balancing units
+    // Final fallback - fill remaining slots, prioritising under-represented
+    // bloom levels and difficulties so we never default to "all easy/remember"
+    // when intersection passes leave gaps.
     if (selected.length < count) {
-      const leftover = available
-        .filter(q => !selectedIds.has(q.id))
-        .sort((a, b) => (unitCounts[a.unit] || 0) - (unitCounts[b.unit] || 0));
-      for (const q of leftover) {
-        if (selected.length >= count) break;
+      const diffFilled: Record<string, number> = { easy: 0, medium: 0, hard: 0 };
+      selected.forEach(q => { diffFilled[q.difficulty] = (diffFilled[q.difficulty] || 0) + 1; });
+
+      while (selected.length < count) {
+        const leftover = available.filter(q => !selectedIds.has(q.id));
+        if (leftover.length === 0) break;
+
+        // Score: prefer questions whose bloom + difficulty are most under-quota,
+        // then least-used unit. Lower score = higher priority.
+        leftover.sort((a, b) => {
+          const aBloom = normalizeBloom(a.bloom_level);
+          const bBloom = normalizeBloom(b.bloom_level);
+          const aBloomGap = (bloomQuotas[aBloom] || 0) - (bloomFilled[aBloom] || 0);
+          const bBloomGap = (bloomQuotas[bBloom] || 0) - (bloomFilled[bBloom] || 0);
+          // Higher gap (more needed) should come first → negate
+          if (bBloomGap !== aBloomGap) return bBloomGap - aBloomGap;
+          const aDiffGap = (diffQuotas[a.difficulty] || 0) - (diffFilled[a.difficulty] || 0);
+          const bDiffGap = (diffQuotas[b.difficulty] || 0) - (diffFilled[b.difficulty] || 0);
+          if (bDiffGap !== aDiffGap) return bDiffGap - aDiffGap;
+          return (unitCounts[a.unit] || 0) - (unitCounts[b.unit] || 0);
+        });
+
+        const q = leftover[0];
         selected.push(q);
         selectedIds.add(q.id);
         unitCounts[q.unit] = (unitCounts[q.unit] || 0) + 1;
+        const b = normalizeBloom(q.bloom_level);
+        bloomFilled[b] = (bloomFilled[b] || 0) + 1;
+        diffFilled[q.difficulty] = (diffFilled[q.difficulty] || 0) + 1;
       }
     }
 
