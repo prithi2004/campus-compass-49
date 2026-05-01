@@ -151,8 +151,13 @@ const AutoGenerateButton = ({
       });
     }
 
-    // Check Part A availability (low marks questions)
+    // Check section-specific availability based on configured marks.
     const partAPool = subjectQuestions.filter(q => q.marks <= partA.marks);
+    const partBPool = subjectQuestions.filter(
+      (q) => q.marks >= partB.marks && (partC.marks <= partB.marks || q.marks < partC.marks)
+    );
+    const partCPool = subjectQuestions.filter(q => q.marks >= partC.marks);
+
     if (partAPool.length < partA.questions) {
       errs.push({
         type: "warning",
@@ -160,12 +165,17 @@ const AutoGenerateButton = ({
       });
     }
 
-    // Check Part C availability (high marks questions)
-    const partCPool = subjectQuestions.filter(q => q.marks >= partC.marks);
-    if (partCPool.length < partC.questions) {
+    if (partBPool.length < partB.questions * 2) {
       errs.push({
         type: "warning",
-        message: `Part C needs ${partC.questions} questions (≥${partC.marks} marks), only ${partCPool.length} available.`,
+        message: `Part B needs ${partB.questions * 2} questions (${partB.questions} main questions with a/b options, around ${partB.marks} marks), only ${partBPool.length} suitable questions available.`,
+      });
+    }
+
+    if (partCPool.length < partC.questions * 2) {
+      errs.push({
+        type: "warning",
+        message: `Part C needs ${partC.questions * 2} questions (${partC.questions} main questions with a/b options, ≥${partC.marks} marks), only ${partCPool.length} suitable questions available.`,
       });
     }
 
@@ -407,6 +417,29 @@ const AutoGenerateButton = ({
     return selected.slice(0, count);
   };
 
+  const selectForPart = (
+    count: number,
+    usedIds: Set<string>,
+    pools: QuestionBankItem[][]
+  ): QuestionBankItem[] => {
+    const picked: QuestionBankItem[] = [];
+    const localUsed = new Set<string>(usedIds);
+
+    for (const pool of pools) {
+      const remaining = count - picked.length;
+      if (remaining <= 0) break;
+
+      const batch = selectQuestions(pool, remaining, localUsed);
+      for (const q of batch) {
+        if (localUsed.has(q.id)) continue;
+        picked.push(q);
+        localUsed.add(q.id);
+      }
+    }
+
+    return picked;
+  };
+
   const generate = () => {
     setGenerating(true);
     const validationErrors = validate();
@@ -423,10 +456,30 @@ const AutoGenerateButton = ({
       const result: Question[] = [];
       let qNum = 1;
 
-      // Part A - select from full pool, assign part marks
-      const partASelected = selectQuestions(subjectQuestions, partA.questions, usedIds);
+      const partAPrimaryPool = subjectQuestions.filter((q) => q.marks <= partA.marks);
+      const partASecondaryPool = subjectQuestions.filter((q) => q.marks <= Math.max(partA.marks, partB.marks));
+      const partBPrimaryPool = subjectQuestions.filter(
+        (q) => q.marks >= partB.marks && (partC.marks <= partB.marks || q.marks < partC.marks)
+      );
+      const partBSecondaryPool = subjectQuestions.filter((q) => q.marks >= partB.marks);
+      const partCPrimaryPool = subjectQuestions.filter((q) => q.marks >= partC.marks);
+      const partCSecondaryPool = subjectQuestions.filter((q) => q.marks >= partB.marks);
+
+      // Reserve the scarcest long-answer questions first so Part C never disappears.
+      const partCNeeded = partC.questions * 2;
+      const partCSelected = selectForPart(partCNeeded, usedIds, [partCPrimaryPool, partCSecondaryPool, subjectQuestions]);
+      partCSelected.forEach((q) => usedIds.add(q.id));
+
+      // Then reserve descriptive questions for Part B.
+      const partBNeeded = partB.questions * 2;
+      const partBSelected = selectForPart(partBNeeded, usedIds, [partBPrimaryPool, partBSecondaryPool, subjectQuestions]);
+      partBSelected.forEach((q) => usedIds.add(q.id));
+
+      // Fill Part A last from short-answer questions, then fall back only if needed.
+      const partASelected = selectForPart(partA.questions, usedIds, [partAPrimaryPool, partASecondaryPool, subjectQuestions]);
+      partASelected.forEach((q) => usedIds.add(q.id));
+
       for (const q of partASelected) {
-        usedIds.add(q.id);
         result.push({
           id: qNum++,
           text: q.question,
@@ -439,11 +492,7 @@ const AutoGenerateButton = ({
         });
       }
 
-      // Part B - need 2x questions for (a) or (b) OR choices
-      const partBNeeded = partB.questions * 2;
-      const partBSelected = selectQuestions(subjectQuestions, partBNeeded, usedIds);
       for (const q of partBSelected) {
-        usedIds.add(q.id);
         result.push({
           id: qNum++,
           text: q.question,
@@ -456,11 +505,7 @@ const AutoGenerateButton = ({
         });
       }
 
-      // Part C - need 2x questions for (a) or (b) OR choices
-      const partCNeeded = partC.questions * 2;
-      const partCSelected = selectQuestions(subjectQuestions, partCNeeded, usedIds);
       for (const q of partCSelected) {
-        usedIds.add(q.id);
         result.push({
           id: qNum++,
           text: q.question,
