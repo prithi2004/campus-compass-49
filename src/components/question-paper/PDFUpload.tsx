@@ -38,13 +38,13 @@ interface PDFUploadProps {
 
 // Taxonomy-based selection algorithm
 const selectByTaxonomy = (
-  pool: Array<{ q: ExtractedQuestion; index: number }>,
+  pool: Array<{ q: ExtractedQuestion; i: number }>,
   count: number,
   bloomDistribution: Record<string, number>,
   difficultyMix: Record<string, number>,
   usedIndices: Set<number>
 ): { selected: ExtractedQuestion[]; indices: number[] } => {
-  const available = pool.filter(({ index }) => !usedIndices.has(index));
+  const available = pool.filter(({ i }) => !usedIndices.has(i));
 
   if (available.length === 0) return { selected: [], indices: [] };
 
@@ -69,7 +69,7 @@ const selectByTaxonomy = (
   const diffLevels = Object.entries(diffQuotas).sort((a, b) => b[1] - a[1]);
   for (const [diff, quota] of diffLevels) {
     const matching = available.filter(
-      ({ q, index }) => q.difficulty.toLowerCase() === diff && !usedLocal.has(index)
+      ({ q, i }) => q.difficulty.toLowerCase() === diff && !usedLocal.has(i)
     );
     // Within each difficulty, prefer questions that also match bloom quotas
     const sorted = matching.sort((a, b) => {
@@ -91,14 +91,14 @@ const selectByTaxonomy = (
 
   // Phase 2: If still need more, fill remaining bloom quotas
   if (selected.length < count) {
-    const remaining = available.filter(({ index }) => !usedLocal.has(index));
+    const remaining = available.filter(({ i }) => !usedLocal.has(i));
     const bloomLevels = Object.entries(bloomQuotas)
       .filter(([, q]) => q > 0)
       .sort((a, b) => b[1] - a[1]);
     for (const [bloom] of bloomLevels) {
       if (selected.length >= count) break;
       const matching = remaining.filter(
-        ({ q, index }) => q.bloomLevel.toLowerCase() === bloom && !usedLocal.has(index)
+        ({ q, i }) => q.bloomLevel.toLowerCase() === bloom && !usedLocal.has(i)
       );
       if (matching.length > 0) {
         const pick = matching[Math.floor(Math.random() * matching.length)];
@@ -111,7 +111,7 @@ const selectByTaxonomy = (
   // Phase 3: Fill any remaining slots randomly
   if (selected.length < count) {
     const remaining = available
-      .filter(({ index }) => !usedLocal.has(index))
+      .filter(({ i }) => !usedLocal.has(i))
       .sort(() => Math.random() - 0.5);
     for (const item of remaining) {
       if (selected.length >= count) break;
@@ -218,7 +218,7 @@ const PDFUpload = ({
   };
 
   const generateByTaxonomy = () => {
-    const totalNeeded = partA.questions + partB.questions + partC.questions;
+    const totalNeeded = partA.questions + partB.questions * 2 + partC.questions * 2;
     
     if (extractedQuestions.length < totalNeeded) {
       setError(`Need ${totalNeeded} questions but only ${extractedQuestions.length} extracted. Add more or reduce part counts.`);
@@ -226,66 +226,60 @@ const PDFUpload = ({
     }
 
     const usedIndices = new Set<number>();
+    const indexedQuestions = extractedQuestions.map((q, i) => ({ q, i }));
 
     // Part A: prefer low-marks, Remember/Understand bloom levels
-    const partAPool = extractedQuestions.filter(q => q.marks <= partA.marks + 3);
+    const partAPool = indexedQuestions.filter(({ q }) => q.marks <= partA.marks + 3);
     const { selected: partASelected, indices: partAIdx } = selectByTaxonomy(
-      partAPool.length >= partA.questions ? partAPool : extractedQuestions,
+      partAPool.length >= partA.questions ? partAPool : indexedQuestions,
       partA.questions,
       bloomDistribution,
       difficultyMix,
       usedIndices
     );
-    // Map back to original indices
-    partAIdx.forEach(i => {
-      const origIdx = extractedQuestions.indexOf(
-        (partAPool.length >= partA.questions ? partAPool : extractedQuestions)[i]
-      );
-      if (origIdx !== -1) usedIndices.add(origIdx);
-    });
+    partAIdx.forEach((i) => usedIndices.add(i));
 
-    // Part B: medium marks
-    const partBPool = extractedQuestions.filter(q => q.marks > partA.marks && q.marks <= partB.marks + 5);
+    // Part B: medium marks, but must produce full (a) OR (b) pairs
+    const partBCount = partB.questions * 2;
+    const partBPool = indexedQuestions.filter(({ q }) => q.marks > partA.marks && q.marks <= partB.marks + 5);
     const { selected: partBSelected, indices: partBIdx } = selectByTaxonomy(
-      partBPool.length >= partB.questions ? partBPool : extractedQuestions,
-      partB.questions,
+      partBPool.length >= partBCount ? partBPool : indexedQuestions,
+      partBCount,
       bloomDistribution,
       difficultyMix,
       usedIndices
     );
-    partBIdx.forEach(i => {
-      const pool = partBPool.length >= partB.questions ? partBPool : extractedQuestions;
-      const origIdx = extractedQuestions.indexOf(pool[i]);
-      if (origIdx !== -1) usedIndices.add(origIdx);
-    });
+    partBIdx.forEach((i) => usedIndices.add(i));
 
-    // Part C: high marks
-    const partCPool = extractedQuestions.filter(q => q.marks >= partC.marks - 5);
+    // Part C: high marks, also full (a) OR (b) pairs
+    const partCCount = partC.questions * 2;
+    const partCPool = indexedQuestions.filter(({ q }) => q.marks >= partC.marks - 5);
     const { selected: partCSelected, indices: partCIdx } = selectByTaxonomy(
-      partCPool.length >= partC.questions ? partCPool : extractedQuestions,
-      partC.questions,
+      partCPool.length >= partCCount ? partCPool : indexedQuestions,
+      partCCount,
       bloomDistribution,
       difficultyMix,
       usedIndices
     );
+    partCIdx.forEach((i) => usedIndices.add(i));
 
     const finalA = shuffleQuestions ? shuffleArray(partASelected) : partASelected;
     const finalB = shuffleQuestions ? shuffleArray(partBSelected) : partBSelected;
     const finalC = shuffleQuestions ? shuffleArray(partCSelected) : partCSelected;
 
     // Override marks to match part config
-    const withMarks = (qs: ExtractedQuestion[], marks: number) =>
-      qs.map(q => ({ ...q, marks }));
+    const withMarks = (qs: ExtractedQuestion[], marks: number, part: "A" | "B" | "C") =>
+      qs.map(q => ({ ...q, marks, part }));
 
     setGeneratedParts({
-      A: withMarks(finalA, partA.marks),
-      B: withMarks(finalB, partB.marks),
-      C: withMarks(finalC, partC.marks),
+      A: withMarks(finalA, partA.marks, "A"),
+      B: withMarks(finalB, partB.marks, "B"),
+      C: withMarks(finalC, partC.marks, "C"),
     });
     setGeneratedQuestions([
-      ...withMarks(finalA, partA.marks),
-      ...withMarks(finalB, partB.marks),
-      ...withMarks(finalC, partC.marks),
+      ...withMarks(finalA, partA.marks, "A"),
+      ...withMarks(finalB, partB.marks, "B"),
+      ...withMarks(finalC, partC.marks, "C"),
     ]);
     setStep("generated");
     setError("");
