@@ -152,30 +152,33 @@ const AutoGenerateButton = ({
     }
 
     // Check section-specific availability based on configured marks.
-    const partAPool = subjectQuestions.filter(q => q.marks <= partA.marks);
-    const partBPool = subjectQuestions.filter(
+    const partAPool = subjectQuestions.filter(q => q.marks === partA.marks);
+    const partACompatiblePool = subjectQuestions.filter(q => q.marks <= partA.marks);
+    const partBPool = subjectQuestions.filter(q => q.marks === partB.marks);
+    const partBCompatiblePool = subjectQuestions.filter(
       (q) => q.marks >= partB.marks && (partC.marks <= partB.marks || q.marks < partC.marks)
     );
-    const partCPool = subjectQuestions.filter(q => q.marks >= partC.marks);
+    const partCPool = subjectQuestions.filter(q => q.marks === partC.marks);
+    const partCCompatiblePool = subjectQuestions.filter(q => q.marks >= partC.marks);
 
-    if (partAPool.length < partA.questions) {
+    if (partACompatiblePool.length < partA.questions) {
       errs.push({
         type: "warning",
-        message: `Part A needs ${partA.questions} questions (≤${partA.marks} marks), only ${partAPool.length} available.`,
+        message: `Part A needs ${partA.questions} questions (${partA.marks} marks each), only ${partACompatiblePool.length} suitable questions available.`,
       });
     }
 
-    if (partBPool.length < partB.questions * 2) {
+    if (partBCompatiblePool.length < partB.questions * 2) {
       errs.push({
         type: "warning",
-        message: `Part B needs ${partB.questions * 2} questions (${partB.questions} main questions with a/b options, around ${partB.marks} marks), only ${partBPool.length} suitable questions available.`,
+        message: `Part B needs ${partB.questions * 2} questions (${partB.questions} main questions with a/b options, ${partB.marks} marks each), only ${partBCompatiblePool.length} suitable questions available.`,
       });
     }
 
-    if (partCPool.length < partC.questions * 2) {
+    if (partCCompatiblePool.length < partC.questions * 2) {
       errs.push({
         type: "warning",
-        message: `Part C needs ${partC.questions * 2} questions (${partC.questions} main questions with a/b options, ≥${partC.marks} marks), only ${partCPool.length} suitable questions available.`,
+        message: `Part C needs ${partC.questions * 2} questions (${partC.questions} main questions with a/b options, ${partC.marks} marks each), only ${partCCompatiblePool.length} suitable questions available.`,
       });
     }
 
@@ -456,27 +459,30 @@ const AutoGenerateButton = ({
       const result: Question[] = [];
       let qNum = 1;
 
-      const partAPrimaryPool = subjectQuestions.filter((q) => q.marks <= partA.marks);
-      const partASecondaryPool = subjectQuestions.filter((q) => q.marks <= Math.max(partA.marks, partB.marks));
-      const partBPrimaryPool = subjectQuestions.filter(
+      const partAPrimaryPool = subjectQuestions.filter((q) => q.marks === partA.marks);
+      const partASecondaryPool = subjectQuestions.filter((q) => q.marks <= partA.marks);
+      const partATertiaryPool = subjectQuestions.filter((q) => q.marks < partB.marks);
+      const partBPrimaryPool = subjectQuestions.filter((q) => q.marks === partB.marks);
+      const partBSecondaryPool = subjectQuestions.filter(
         (q) => q.marks >= partB.marks && (partC.marks <= partB.marks || q.marks < partC.marks)
       );
-      const partBSecondaryPool = subjectQuestions.filter((q) => q.marks >= partB.marks);
-      const partCPrimaryPool = subjectQuestions.filter((q) => q.marks >= partC.marks);
-      const partCSecondaryPool = subjectQuestions.filter((q) => q.marks >= partB.marks);
+      const partBTertiaryPool = subjectQuestions.filter((q) => q.marks < partC.marks);
+      const partCPrimaryPool = subjectQuestions.filter((q) => q.marks === partC.marks);
+      const partCSecondaryPool = subjectQuestions.filter((q) => q.marks >= partC.marks);
+      const partCTertiaryPool = subjectQuestions.filter((q) => q.marks > partB.marks);
 
       // Reserve the scarcest long-answer questions first so Part C never disappears.
       const partCNeeded = partC.questions * 2;
-      const partCSelected = selectForPart(partCNeeded, usedIds, [partCPrimaryPool, partCSecondaryPool, subjectQuestions]);
+      const partCSelected = selectForPart(partCNeeded, usedIds, [partCPrimaryPool, partCSecondaryPool, partCTertiaryPool, subjectQuestions]);
       partCSelected.forEach((q) => usedIds.add(q.id));
 
       // Then reserve descriptive questions for Part B.
       const partBNeeded = partB.questions * 2;
-      const partBSelected = selectForPart(partBNeeded, usedIds, [partBPrimaryPool, partBSecondaryPool, subjectQuestions]);
+      const partBSelected = selectForPart(partBNeeded, usedIds, [partBPrimaryPool, partBSecondaryPool, partBTertiaryPool, subjectQuestions]);
       partBSelected.forEach((q) => usedIds.add(q.id));
 
       // Fill Part A last from short-answer questions, then fall back only if needed.
-      const partASelected = selectForPart(partA.questions, usedIds, [partAPrimaryPool, partASecondaryPool, subjectQuestions]);
+      const partASelected = selectForPart(partA.questions, usedIds, [partAPrimaryPool, partASecondaryPool, partATertiaryPool, subjectQuestions]);
       partASelected.forEach((q) => usedIds.add(q.id));
 
       for (const q of partASelected) {
