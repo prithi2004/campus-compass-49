@@ -449,11 +449,13 @@ const PDFUpload = ({
                       <h4 className="font-semibold text-card-foreground text-sm">
                         Part {part} ({partConfig.marks} marks each)
                       </h4>
-                      <Badge variant="outline" className="text-xs">{partQs.length} questions</Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {part === "A" ? `${partQs.length} questions` : `${Math.ceil(partQs.length / 2)} pairs`}
+                      </Badge>
                     </div>
                     <div className="space-y-2">
-                      {partQs.map((q, i) => (
-                        <div key={i} className="p-3 rounded-lg bg-muted/20 border border-border/30">
+                      {part === "A" ? partQs.map((q, i) => (
+                        <div key={`${part}-${i}`} className="p-3 rounded-lg bg-muted/20 border border-border/30">
                           <p className="text-card-foreground text-sm mb-1.5">
                             <span className="font-medium text-primary">Q{i + 1}.</span> {q.question}
                           </p>
@@ -461,6 +463,26 @@ const PDFUpload = ({
                             <Badge variant="outline" className={`text-xs ${getDifficultyColor(q.difficulty)}`}>{q.difficulty}</Badge>
                             <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">{q.bloomLevel}</Badge>
                           </div>
+                        </div>
+                      )) : pairOrQuestions(partQs, 1).map(({ questionNumber, optionA, optionB }) => (
+                        <div key={`${part}-${questionNumber}`} className="p-3 rounded-lg bg-muted/20 border border-border/30 space-y-2">
+                          <p className="text-card-foreground text-sm">
+                            <span className="font-medium text-primary">Q{questionNumber}.</span> (a) {optionA.question}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            <Badge variant="outline" className={`text-xs ${getDifficultyColor(optionA.difficulty)}`}>{optionA.difficulty}</Badge>
+                            <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">{optionA.bloomLevel}</Badge>
+                          </div>
+                          {optionB && (
+                            <>
+                              <p className="text-center text-xs font-semibold text-muted-foreground">(OR)</p>
+                              <p className="text-card-foreground text-sm">(b) {optionB.question}</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                <Badge variant="outline" className={`text-xs ${getDifficultyColor(optionB.difficulty)}`}>{optionB.difficulty}</Badge>
+                                <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">{optionB.bloomLevel}</Badge>
+                              </div>
+                            </>
+                          )}
                         </div>
                       ))}
                     </div>
