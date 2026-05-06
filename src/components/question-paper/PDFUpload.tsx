@@ -5,6 +5,7 @@ import { Upload, FileText, Loader2, CheckCircle2, AlertCircle, Brain, Shuffle } 
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { pairOrQuestions } from "@/utils/questionPaperPattern";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
@@ -16,6 +17,7 @@ export interface ExtractedQuestion {
   unit: string;
   difficulty: string;
   bloomLevel: string;
+  part?: "A" | "B" | "C";
 }
 
 interface PartConfig {
@@ -36,15 +38,13 @@ interface PDFUploadProps {
 
 // Taxonomy-based selection algorithm
 const selectByTaxonomy = (
-  pool: ExtractedQuestion[],
+  pool: Array<{ q: ExtractedQuestion; index: number }>,
   count: number,
   bloomDistribution: Record<string, number>,
   difficultyMix: Record<string, number>,
   usedIndices: Set<number>
 ): { selected: ExtractedQuestion[]; indices: number[] } => {
-  const available = pool
-    .map((q, i) => ({ q, i }))
-    .filter(({ i }) => !usedIndices.has(i));
+  const available = pool.filter(({ index }) => !usedIndices.has(index));
 
   if (available.length === 0) return { selected: [], indices: [] };
 
@@ -69,7 +69,7 @@ const selectByTaxonomy = (
   const diffLevels = Object.entries(diffQuotas).sort((a, b) => b[1] - a[1]);
   for (const [diff, quota] of diffLevels) {
     const matching = available.filter(
-      ({ q, i }) => q.difficulty.toLowerCase() === diff && !usedLocal.has(i)
+      ({ q, index }) => q.difficulty.toLowerCase() === diff && !usedLocal.has(index)
     );
     // Within each difficulty, prefer questions that also match bloom quotas
     const sorted = matching.sort((a, b) => {
@@ -91,14 +91,14 @@ const selectByTaxonomy = (
 
   // Phase 2: If still need more, fill remaining bloom quotas
   if (selected.length < count) {
-    const remaining = available.filter(({ i }) => !usedLocal.has(i));
+    const remaining = available.filter(({ index }) => !usedLocal.has(index));
     const bloomLevels = Object.entries(bloomQuotas)
       .filter(([, q]) => q > 0)
       .sort((a, b) => b[1] - a[1]);
     for (const [bloom] of bloomLevels) {
       if (selected.length >= count) break;
       const matching = remaining.filter(
-        ({ q, i }) => q.bloomLevel.toLowerCase() === bloom && !usedLocal.has(i)
+        ({ q, index }) => q.bloomLevel.toLowerCase() === bloom && !usedLocal.has(index)
       );
       if (matching.length > 0) {
         const pick = matching[Math.floor(Math.random() * matching.length)];
@@ -111,7 +111,7 @@ const selectByTaxonomy = (
   // Phase 3: Fill any remaining slots randomly
   if (selected.length < count) {
     const remaining = available
-      .filter(({ i }) => !usedLocal.has(i))
+      .filter(({ index }) => !usedLocal.has(index))
       .sort(() => Math.random() - 0.5);
     for (const item of remaining) {
       if (selected.length >= count) break;
