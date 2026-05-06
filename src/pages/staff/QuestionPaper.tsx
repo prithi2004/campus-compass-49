@@ -1477,7 +1477,7 @@ const StaffQuestionPaper = () => {
                       unit: q.unit,
                       difficulty: q.difficulty,
                       bloomLevel: q.bloomLevel.toLowerCase(),
-                      part: "A" as const,
+                      part: q.part || "A",
                     }));
                     setQuestions(newQuestions);
                   }}

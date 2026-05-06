@@ -5,6 +5,7 @@ import { Upload, FileText, Loader2, CheckCircle2, AlertCircle, Brain, Shuffle } 
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { pairOrQuestions } from "@/utils/questionPaperPattern";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
@@ -16,6 +17,7 @@ export interface ExtractedQuestion {
   unit: string;
   difficulty: string;
   bloomLevel: string;
+  part?: "A" | "B" | "C";
 }
 
 interface PartConfig {
@@ -36,15 +38,13 @@ interface PDFUploadProps {
 
 // Taxonomy-based selection algorithm
 const selectByTaxonomy = (
-  pool: ExtractedQuestion[],
+  pool: Array<{ q: ExtractedQuestion; i: number }>,
   count: number,
   bloomDistribution: Record<string, number>,
   difficultyMix: Record<string, number>,
   usedIndices: Set<number>
 ): { selected: ExtractedQuestion[]; indices: number[] } => {
-  const available = pool
-    .map((q, i) => ({ q, i }))
-    .filter(({ i }) => !usedIndices.has(i));
+  const available = pool.filter(({ i }) => !usedIndices.has(i));
 
   if (available.length === 0) return { selected: [], indices: [] };
 
@@ -218,7 +218,7 @@ const PDFUpload = ({
   };
 
   const generateByTaxonomy = () => {
-    const totalNeeded = partA.questions + partB.questions + partC.questions;
+    const totalNeeded = partA.questions + partB.questions * 2 + partC.questions * 2;
     
     if (extractedQuestions.length < totalNeeded) {
       setError(`Need ${totalNeeded} questions but only ${extractedQuestions.length} extracted. Add more or reduce part counts.`);
@@ -226,66 +226,60 @@ const PDFUpload = ({
     }
 
     const usedIndices = new Set<number>();
+    const indexedQuestions = extractedQuestions.map((q, i) => ({ q, i }));
 
     // Part A: prefer low-marks, Remember/Understand bloom levels
-    const partAPool = extractedQuestions.filter(q => q.marks <= partA.marks + 3);
+    const partAPool = indexedQuestions.filter(({ q }) => q.marks <= partA.marks + 3);
     const { selected: partASelected, indices: partAIdx } = selectByTaxonomy(
-      partAPool.length >= partA.questions ? partAPool : extractedQuestions,
+      partAPool.length >= partA.questions ? partAPool : indexedQuestions,
       partA.questions,
       bloomDistribution,
       difficultyMix,
       usedIndices
     );
-    // Map back to original indices
-    partAIdx.forEach(i => {
-      const origIdx = extractedQuestions.indexOf(
-        (partAPool.length >= partA.questions ? partAPool : extractedQuestions)[i]
-      );
-      if (origIdx !== -1) usedIndices.add(origIdx);
-    });
+    partAIdx.forEach((i) => usedIndices.add(i));
 
-    // Part B: medium marks
-    const partBPool = extractedQuestions.filter(q => q.marks > partA.marks && q.marks <= partB.marks + 5);
+    // Part B: medium marks, but must produce full (a) OR (b) pairs
+    const partBCount = partB.questions * 2;
+    const partBPool = indexedQuestions.filter(({ q }) => q.marks > partA.marks && q.marks <= partB.marks + 5);
     const { selected: partBSelected, indices: partBIdx } = selectByTaxonomy(
-      partBPool.length >= partB.questions ? partBPool : extractedQuestions,
-      partB.questions,
+      partBPool.length >= partBCount ? partBPool : indexedQuestions,
+      partBCount,
       bloomDistribution,
       difficultyMix,
       usedIndices
     );
-    partBIdx.forEach(i => {
-      const pool = partBPool.length >= partB.questions ? partBPool : extractedQuestions;
-      const origIdx = extractedQuestions.indexOf(pool[i]);
-      if (origIdx !== -1) usedIndices.add(origIdx);
-    });
+    partBIdx.forEach((i) => usedIndices.add(i));
 
-    // Part C: high marks
-    const partCPool = extractedQuestions.filter(q => q.marks >= partC.marks - 5);
+    // Part C: high marks, also full (a) OR (b) pairs
+    const partCCount = partC.questions * 2;
+    const partCPool = indexedQuestions.filter(({ q }) => q.marks >= partC.marks - 5);
     const { selected: partCSelected, indices: partCIdx } = selectByTaxonomy(
-      partCPool.length >= partC.questions ? partCPool : extractedQuestions,
-      partC.questions,
+      partCPool.length >= partCCount ? partCPool : indexedQuestions,
+      partCCount,
       bloomDistribution,
       difficultyMix,
       usedIndices
     );
+    partCIdx.forEach((i) => usedIndices.add(i));
 
     const finalA = shuffleQuestions ? shuffleArray(partASelected) : partASelected;
     const finalB = shuffleQuestions ? shuffleArray(partBSelected) : partBSelected;
     const finalC = shuffleQuestions ? shuffleArray(partCSelected) : partCSelected;
 
     // Override marks to match part config
-    const withMarks = (qs: ExtractedQuestion[], marks: number) =>
-      qs.map(q => ({ ...q, marks }));
+    const withMarks = (qs: ExtractedQuestion[], marks: number, part: "A" | "B" | "C") =>
+      qs.map(q => ({ ...q, marks, part }));
 
     setGeneratedParts({
-      A: withMarks(finalA, partA.marks),
-      B: withMarks(finalB, partB.marks),
-      C: withMarks(finalC, partC.marks),
+      A: withMarks(finalA, partA.marks, "A"),
+      B: withMarks(finalB, partB.marks, "B"),
+      C: withMarks(finalC, partC.marks, "C"),
     });
     setGeneratedQuestions([
-      ...withMarks(finalA, partA.marks),
-      ...withMarks(finalB, partB.marks),
-      ...withMarks(finalC, partC.marks),
+      ...withMarks(finalA, partA.marks, "A"),
+      ...withMarks(finalB, partB.marks, "B"),
+      ...withMarks(finalC, partC.marks, "C"),
     ]);
     setStep("generated");
     setError("");
@@ -455,11 +449,13 @@ const PDFUpload = ({
                       <h4 className="font-semibold text-card-foreground text-sm">
                         Part {part} ({partConfig.marks} marks each)
                       </h4>
-                      <Badge variant="outline" className="text-xs">{partQs.length} questions</Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {part === "A" ? `${partQs.length} questions` : `${Math.ceil(partQs.length / 2)} pairs`}
+                      </Badge>
                     </div>
                     <div className="space-y-2">
-                      {partQs.map((q, i) => (
-                        <div key={i} className="p-3 rounded-lg bg-muted/20 border border-border/30">
+                      {part === "A" ? partQs.map((q, i) => (
+                        <div key={`${part}-${i}`} className="p-3 rounded-lg bg-muted/20 border border-border/30">
                           <p className="text-card-foreground text-sm mb-1.5">
                             <span className="font-medium text-primary">Q{i + 1}.</span> {q.question}
                           </p>
@@ -467,6 +463,26 @@ const PDFUpload = ({
                             <Badge variant="outline" className={`text-xs ${getDifficultyColor(q.difficulty)}`}>{q.difficulty}</Badge>
                             <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">{q.bloomLevel}</Badge>
                           </div>
+                        </div>
+                      )) : pairOrQuestions(partQs, 1).map(({ questionNumber, optionA, optionB }) => (
+                        <div key={`${part}-${questionNumber}`} className="p-3 rounded-lg bg-muted/20 border border-border/30 space-y-2">
+                          <p className="text-card-foreground text-sm">
+                            <span className="font-medium text-primary">Q{questionNumber}.</span> (a) {optionA.question}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            <Badge variant="outline" className={`text-xs ${getDifficultyColor(optionA.difficulty)}`}>{optionA.difficulty}</Badge>
+                            <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">{optionA.bloomLevel}</Badge>
+                          </div>
+                          {optionB && (
+                            <>
+                              <p className="text-center text-xs font-semibold text-muted-foreground">(OR)</p>
+                              <p className="text-card-foreground text-sm">(b) {optionB.question}</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                <Badge variant="outline" className={`text-xs ${getDifficultyColor(optionB.difficulty)}`}>{optionB.difficulty}</Badge>
+                                <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">{optionB.bloomLevel}</Badge>
+                              </div>
+                            </>
+                          )}
                         </div>
                       ))}
                     </div>
