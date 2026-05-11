@@ -1509,6 +1509,22 @@ const StaffQuestionPaper = () => {
                   onGenerated={(generated) => setQuestions(generated)}
                 />
 
+                {examName === "endsem" && (
+                  <EndSemGenerateButton
+                    iat1Questions={iat1Questions}
+                    iat2Questions={iat2Questions}
+                    questionBank={questionBank}
+                    subjectId={courseName}
+                    partA={partA}
+                    partB={partB}
+                    partC={partC}
+                    bloomDistribution={bloomDistribution}
+                    difficultyMix={difficultyMix}
+                    shuffleQuestions={shuffleQuestions}
+                    onGenerated={(generated) => setQuestions(generated)}
+                  />
+                )}
+
                 <Button onClick={addQuestion}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add New
