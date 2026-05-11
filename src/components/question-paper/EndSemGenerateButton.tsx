@@ -205,7 +205,6 @@ const EndSemGenerateButton = ({
 
     onGenerated(finalQuestions);
 
-    const iat1Used = finalQuestions.filter((_, i) => false).length; // placeholder
     toast({
       title: "End-Sem paper generated",
       description: `${finalQuestions.length} questions: ~25% IAT-1, ~25% IAT-2, ~50% bank.`,
