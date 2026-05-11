@@ -43,6 +43,8 @@ import { useDepartments } from "@/hooks/useDepartments";
 import { useSubjects, useAcademicYears } from "@/hooks/useSubjects";
 import CSVUpload from "@/components/question-paper/CSVUpload";
 import PDFUpload, { type ExtractedQuestion } from "@/components/question-paper/PDFUpload";
+import EndSemUpload from "@/components/question-paper/EndSemUpload";
+import EndSemGenerateButton from "@/components/question-paper/EndSemGenerateButton";
 import AutoGenerateButton from "@/components/question-paper/AutoGenerateButton";
 import PaperPreview from "@/components/question-paper/PaperPreview";
 import PaperHistory from "@/components/question-paper/PaperHistory";
@@ -103,6 +105,10 @@ const StaffQuestionPaper = () => {
   const [examDate, setExamDate] = useState("");
   const [duration, setDuration] = useState("");
   const [maxMarks, setMaxMarks] = useState("");
+
+  // End-Sem IAT uploads (used when examName === "endsem")
+  const [iat1Questions, setIat1Questions] = useState<ExtractedQuestion[]>([]);
+  const [iat2Questions, setIat2Questions] = useState<ExtractedQuestion[]>([]);
 
   // Question Paper Pattern
   const [partA, setPartA] = useState({ questions: 10, marks: 2, total: 20 });
