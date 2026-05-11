@@ -47,6 +47,7 @@ import EndSemUpload from "@/components/question-paper/EndSemUpload";
 import EndSemGenerateButton from "@/components/question-paper/EndSemGenerateButton";
 import AutoGenerateButton from "@/components/question-paper/AutoGenerateButton";
 import PaperPreview from "@/components/question-paper/PaperPreview";
+import AIExplainButton from "@/components/question-paper/AIExplainButton";
 import PaperHistory from "@/components/question-paper/PaperHistory";
 import { generateQuestionPaperPDF } from "@/utils/generateQuestionPaperPDF";
 import { getQuestionPartGroups, normalizeQuestionPaperQuestions, pairOrQuestions } from "@/utils/questionPaperPattern";
@@ -374,9 +375,17 @@ const StaffQuestionPaper = () => {
           <Badge variant="outline">Part {question.part}</Badge>
           <Badge variant="outline">{question.unit}</Badge>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => removeQuestion(question.id)}>
-          <Trash2 className="w-4 h-4 text-destructive" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <AIExplainButton
+            question={question.text}
+            unit={question.unit}
+            marks={question.marks}
+            type={question.type}
+          />
+          <Button variant="ghost" size="sm" onClick={() => removeQuestion(question.id)}>
+            <Trash2 className="w-4 h-4 text-destructive" />
+          </Button>
+        </div>
       </div>
       <div className="space-y-3">
         <Textarea
