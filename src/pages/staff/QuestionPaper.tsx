@@ -711,11 +711,19 @@ const StaffQuestionPaper = () => {
                   </SelectContent>
                 </Select>
               </div>
+              {examName === "endsem" && (
+                <div className="lg:col-span-3">
+                  <EndSemUpload
+                    iat1Questions={iat1Questions}
+                    iat2Questions={iat2Questions}
+                    onIat1Change={setIat1Questions}
+                    onIat2Change={setIat2Questions}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
-
-        {/* Step 2: Question Paper Pattern */}
         {step === 2 && (
           <div className="space-y-6">
             <h3 className="text-lg font-heading font-semibold text-card-foreground flex items-center gap-2">
