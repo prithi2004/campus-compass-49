@@ -43,6 +43,8 @@ import { useDepartments } from "@/hooks/useDepartments";
 import { useSubjects, useAcademicYears } from "@/hooks/useSubjects";
 import CSVUpload from "@/components/question-paper/CSVUpload";
 import PDFUpload, { type ExtractedQuestion } from "@/components/question-paper/PDFUpload";
+import EndSemUpload from "@/components/question-paper/EndSemUpload";
+import EndSemGenerateButton from "@/components/question-paper/EndSemGenerateButton";
 import AutoGenerateButton from "@/components/question-paper/AutoGenerateButton";
 import PaperPreview from "@/components/question-paper/PaperPreview";
 import PaperHistory from "@/components/question-paper/PaperHistory";
@@ -103,6 +105,10 @@ const StaffQuestionPaper = () => {
   const [examDate, setExamDate] = useState("");
   const [duration, setDuration] = useState("");
   const [maxMarks, setMaxMarks] = useState("");
+
+  // End-Sem IAT uploads (used when examName === "endsem")
+  const [iat1Questions, setIat1Questions] = useState<ExtractedQuestion[]>([]);
+  const [iat2Questions, setIat2Questions] = useState<ExtractedQuestion[]>([]);
 
   // Question Paper Pattern
   const [partA, setPartA] = useState({ questions: 10, marks: 2, total: 20 });
@@ -705,11 +711,19 @@ const StaffQuestionPaper = () => {
                   </SelectContent>
                 </Select>
               </div>
+              {examName === "endsem" && (
+                <div className="lg:col-span-3">
+                  <EndSemUpload
+                    iat1Questions={iat1Questions}
+                    iat2Questions={iat2Questions}
+                    onIat1Change={setIat1Questions}
+                    onIat2Change={setIat2Questions}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
-
-        {/* Step 2: Question Paper Pattern */}
         {step === 2 && (
           <div className="space-y-6">
             <h3 className="text-lg font-heading font-semibold text-card-foreground flex items-center gap-2">
@@ -1494,6 +1508,22 @@ const StaffQuestionPaper = () => {
                   shuffleQuestions={shuffleQuestions}
                   onGenerated={(generated) => setQuestions(generated)}
                 />
+
+                {examName === "endsem" && (
+                  <EndSemGenerateButton
+                    iat1Questions={iat1Questions}
+                    iat2Questions={iat2Questions}
+                    questionBank={questionBank}
+                    subjectId={courseName}
+                    partA={partA}
+                    partB={partB}
+                    partC={partC}
+                    bloomDistribution={bloomDistribution}
+                    difficultyMix={difficultyMix}
+                    shuffleQuestions={shuffleQuestions}
+                    onGenerated={(generated) => setQuestions(generated)}
+                  />
+                )}
 
                 <Button onClick={addQuestion}>
                   <Plus className="w-4 h-4 mr-2" />
