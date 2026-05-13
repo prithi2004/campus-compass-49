@@ -48,6 +48,7 @@ import EndSemGenerateButton from "@/components/question-paper/EndSemGenerateButt
 import AutoGenerateButton from "@/components/question-paper/AutoGenerateButton";
 import PaperPreview from "@/components/question-paper/PaperPreview";
 import AIExplainButton from "@/components/question-paper/AIExplainButton";
+import AIQuestionChat, { type AIGeneratedQuestion } from "@/components/question-paper/AIQuestionChat";
 import PaperHistory from "@/components/question-paper/PaperHistory";
 import { generateQuestionPaperPDF } from "@/utils/generateQuestionPaperPDF";
 import { getQuestionPartGroups, normalizeQuestionPaperQuestions, pairOrQuestions } from "@/utils/questionPaperPattern";
@@ -1483,6 +1484,28 @@ const StaffQuestionPaper = () => {
                 </Dialog>
 
                 <CSVUpload subjects={subjects} />
+
+                <AIQuestionChat
+                  subjectId={courseName}
+                  subjectName={selectedSubjectName}
+                  units={units}
+                  onAddToPaper={(q: AIGeneratedQuestion) => {
+                    setQuestions((prev) => [
+                      ...prev,
+                      {
+                        id: prev.length + 1,
+                        text: q.question,
+                        type: q.type,
+                        marks: q.marks,
+                        unit: q.unit,
+                        difficulty: q.difficulty,
+                        bloomLevel: q.bloom_level.toLowerCase(),
+                        part: "A",
+                      },
+                    ]);
+                  }}
+                />
+
 
                 <PDFUpload
                   partA={partA}
