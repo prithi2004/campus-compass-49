@@ -1485,6 +1485,28 @@ const StaffQuestionPaper = () => {
 
                 <CSVUpload subjects={subjects} />
 
+                <AIQuestionChat
+                  subjectId={courseName}
+                  subjectName={selectedSubjectName}
+                  units={units}
+                  onAddToPaper={(q: AIGeneratedQuestion) => {
+                    setQuestions((prev) => [
+                      ...prev,
+                      {
+                        id: prev.length + 1,
+                        text: q.question,
+                        type: q.type,
+                        marks: q.marks,
+                        unit: q.unit,
+                        difficulty: q.difficulty,
+                        bloomLevel: q.bloom_level.toLowerCase(),
+                        part: "A",
+                      },
+                    ]);
+                  }}
+                />
+
+
                 <PDFUpload
                   partA={partA}
                   partB={partB}
