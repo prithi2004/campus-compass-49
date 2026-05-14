@@ -1221,6 +1221,19 @@ const StaffQuestionPaper = () => {
                 {/* 1. Upload Question Bank (PDF) */}
                 <PDFBankUpload subjects={subjects} />
 
+                {/* 1b. Auto-generate paper from bank using taxonomy levels */}
+                <AutoGenerateButton
+                  questionBank={questionBank}
+                  subjectId={courseName}
+                  partA={partA}
+                  partB={partB}
+                  partC={partC}
+                  bloomDistribution={bloomDistribution}
+                  difficultyMix={difficultyMix}
+                  shuffleQuestions={shuffleQuestions}
+                  onGenerated={(generated) => setQuestions(generated)}
+                />
+
                 {/* 2. AI Agent */}
                 <AIQuestionChat
                   subjectId={courseName}
