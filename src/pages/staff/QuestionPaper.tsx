@@ -1218,8 +1218,8 @@ const StaffQuestionPaper = () => {
                 Add Questions
               </h3>
               <div className="flex gap-2 flex-wrap">
-                {/* 1. Upload Question Bank */}
-                <CSVUpload subjects={subjects} />
+                {/* 1. Upload Question Bank (PDF) */}
+                <PDFBankUpload subjects={subjects} />
 
                 {/* 2. AI Agent */}
                 <AIQuestionChat
