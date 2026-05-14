@@ -41,7 +41,7 @@ import { useQuestionBank, useCreateBankQuestion, useToggleFavorite, type Questio
 import { useSavePaperConfig } from "@/hooks/useQuestionPaperConfig";
 import { useDepartments } from "@/hooks/useDepartments";
 import { useSubjects, useAcademicYears } from "@/hooks/useSubjects";
-import CSVUpload from "@/components/question-paper/CSVUpload";
+import PDFBankUpload from "@/components/question-paper/PDFBankUpload";
 import PDFUpload, { type ExtractedQuestion } from "@/components/question-paper/PDFUpload";
 import EndSemUpload from "@/components/question-paper/EndSemUpload";
 import EndSemGenerateButton from "@/components/question-paper/EndSemGenerateButton";
@@ -1218,8 +1218,8 @@ const StaffQuestionPaper = () => {
                 Add Questions
               </h3>
               <div className="flex gap-2 flex-wrap">
-                {/* 1. Upload Question Bank */}
-                <CSVUpload subjects={subjects} />
+                {/* 1. Upload Question Bank (PDF) */}
+                <PDFBankUpload subjects={subjects} />
 
                 {/* 2. AI Agent */}
                 <AIQuestionChat
